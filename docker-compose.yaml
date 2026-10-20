@@ -1,0 +1,18 @@
+services:
+  db:
+    image: postgres:14
+    container_name: bodegas_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: bodegas_atuel
+    ports:
+      - "5432:5432"
+    volumes:
+      # 1. Este volumen guarda tus datos de forma permanente en tu disco:
+      - postgres_data:/var/lib/postgresql/data
+      # 2. Tus migraciones (solo se ejecutarán la PRIMERA VEZ que crees la BD):
+      - ./db/migrations:/docker-entrypoint-initdb.d
+
+volumes:
+  postgres_data:

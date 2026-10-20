@@ -333,10 +333,10 @@ BEGIN
       FROM COMPOSICION_VINO
      WHERE codigo_vino = v_codigo_vino;
 
-    IF v_suma_porc <> 100.00 THEN
-        RAISE EXCEPTION 'La suma de los porcentajes de corte del vino % es %%, pero debe ser exactamente 100.00%% (RN-05)',
-            v_codigo_vino, v_suma_porc;
-    END IF;
+	IF v_suma_porc <> 100.00 THEN
+            RAISE EXCEPTION 'La suma de los porcentajes de corte del vino % es % %%, pero debe ser exactamente 100.00%%',
+                v_codigo_vino, v_suma_porc;
+        END IF;
 
     RETURN NULL;
 END;

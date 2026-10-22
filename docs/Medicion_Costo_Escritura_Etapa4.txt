@@ -1,0 +1,37 @@
+Paso a paso de la medición de el costo de escritura (con y sin indices):
+
+-- 1. Crear una tabla clon vacía (sin índices ni triggers)
+CREATE TABLE prueba_escritura (
+    nro_comprob INTEGER,
+    codigo_vino INTEGER,
+    cantidad INTEGER,
+    precio_unitario NUMERIC(10,2),
+    descuento NUMERIC(10,2),
+    subtotal NUMERIC(12,2)
+);
+
+-- 2. Medir escritura SIN indices:
+-- Copiamos todos los datos reales hacia la tabla clon y medimos el tiempo
+EXPLAIN ANALYZE
+INSERT INTO prueba_escritura
+SELECT * FROM RENGLON_COMPROBANTE;
+
+-- 3. Vaciamos la tabla clon
+TRUNCATE prueba_escritura; 
+
+-- Creamos los mismos índices que usamos en la Etapa 4
+CREATE INDEX idx_prueba_fk ON prueba_escritura(codigo_vino);
+CREATE INDEX idx_prueba_include ON prueba_escritura(codigo_vino) INCLUDE (cantidad);
+
+-- 4. Medir escritura CON indices:
+-- Volvemos a insertar todos los datos, pero ahora Postgres debe actualizar los índices
+EXPLAIN ANALYZE
+INSERT INTO prueba_escritura
+SELECT * FROM RENGLON_COMPROBANTE;
+
+-- 5. Limpieza 
+DROP TABLE prueba_escritura;
+
+-- Resultados:
+-- Costo de Escritura SIN indices: Execution Time: 1210.316 ms
+-- Costo de Escritura CON indices: Execution Time: 4167.916 ms

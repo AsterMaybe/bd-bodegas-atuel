@@ -1,0 +1,48 @@
+========================================================================================================================================================
+TABLA COMPARATIVA DE RENDIMIENTO: ANTES Y DESPUÉS DE LA CREACIÓN DE ÍNDICES (ETAPA 4)
+========================================================================================================================================================
+
++----------+---------+--------------------------------------------------------+-----------------------------------+------------------+---------------+----------------+
+| Consulta | Estado  | Tipo de Scan Predominante                              | Filas Leídas / Descartadas Filter | Buffers (Hit)    | Planning Time | Execution Time |
++----------+---------+--------------------------------------------------------+-----------------------------------+------------------+---------------+----------------+
+| S4       | ANTES   | Seq Scan en renglon_transferencia + Seq Scan transf.   | 22 dev. (9925 desc.) / 200 (2300) | hit: 68          | 0.246 ms      | 0.845 ms       |
+|          | DESPUÉS | Bitmap Index Scan (idx_fk_renglon_transf_vino + fecha) | 22 dev. (0 desc.) / 200 (0 desc.) | hit: 35 (-48.5%) | 0.259 ms      | 0.182 ms (-78%)|
++----------+---------+--------------------------------------------------------+-----------------------------------+------------------+---------------+----------------+
+| S5       | ANTES   | Seq Scan en transferencia                              | 0 devueltas (2500 descartadas)    | hit: 15          | 0.132 ms      | 0.128 ms       |
+|          | DESPUÉS | Index Only Scan (idx_transferencia_pendientes)         | 0 devueltas (0 descartadas)       | hit: 2  (-86.7%) | 0.153 ms      | 0.059 ms (-54%)|
++----------+---------+--------------------------------------------------------+-----------------------------------+------------------+---------------+----------------+
+| S8       | ANTES   | Parallel Seq Scan en comprobante (2 workers)           | 32564 dev. (117436 descartadas)   | hit: 1516        | 0.126 ms      | 13.341 ms      |
+|          | DESPUÉS | Index Only Scan (idx_comprobante_fecha_sala_inc)       | 32564 dev. (0 descartadas)        | hit: 191 (-87.4%)| 0.138 ms      | 8.614 ms (-35%)|
++----------+---------+--------------------------------------------------------+-----------------------------------+------------------+---------------+----------------+
+| S3       | ANTES   | Parallel Seq Scan en comprobante (2 workers)           | 507 dev. (149492 descartadas)     | hit: 3632        | 0.461 ms      | 10.084 ms      |
+|          | DESPUÉS | Index Only Scan (idx_comprobante_fecha_sala_inc)       | 507 dev. (0 descartadas)          | hit: 1157 (-68%) | 0.502 ms      | 3.119 ms (-69%)|
++----------+---------+--------------------------------------------------------+-----------------------------------+------------------+---------------+----------------+
+
+========================================================================================================================================================
+CASO DOCUMENTADO DONDE EL PLANIFICADOR NO USA UN ÍNDICE EXISTENTE Y SE DESCARTA (PASOS 6 Y 8)
+========================================================================================================================================================
+
++----------+---------+--------------------------------------------------------+-----------------------------------+------------------+---------------+----------------+
+| Consulta | Estado  | Tipo de Scan Predominante                              | Filas Leídas (RENGLON_COMPROBANTE)| Buffers          | Planning Time | Execution Time |
++----------+---------+--------------------------------------------------------+-----------------------------------+------------------+---------------+----------------+
+| S1       | ANTES   | Parallel Seq Scan en renglon_comprobante               | 100% de la tabla (~600.000 filas) | hit: 5034        | 1.060 ms      | 57.292 ms      |
+|          | DESPUÉS | Parallel Seq Scan (ignora idx_fk_renglon_comp_vino)    | 100% de la tabla (~600.000 filas) | hit: 5034        | 0.388 ms      | 58.604 ms      |
++----------+---------+--------------------------------------------------------+-----------------------------------+------------------+---------------+----------------+
+
+* Justificación (Paso 6 - Índice evaluado y descartado):
+  Se evaluó el índice idx_fk_renglon_comprobante_vino sobre RENGLON_COMPROBANTE(codigo_vino) y se descartó porque no redujo el tiempo de lectura en S1
+  (57.292 ms vs 58.604 ms), pero triplicó el costo de inserción masiva en la tabla (de 1210.316 ms a 4167.916 ms).
+
+* Justificación (Paso 8 - Por qué el planificador ignora el índice):
+
+  La consulta S1 suma todas las botellas vendidas históricamente agrupando por vino sin ninguna cláusula WHERE. Al tener que leer el 100% de las filas
+  de RENGLON_COMPROBANTE (baja selectividad), el optimizador determina que es más económico leer los bloques secuencialmente en paralelo (Parallel Seq Scan)
+  que realizar cientos de miles de lecturas aleatorias desde el árbol B-Tree hacia la tabla.
+
+
+
+========================================================================================================================================================
+RESUMEN DE MEDICIÓN DEL COSTO DE ESCRITURA EN RENGLON_COMPROBANTE
+
+* Inserción masiva SIN índices: Execution Time: 1210.316 ms
+* Inserción masiva CON índices: Execution Time: 4167.916 ms (+244.4% de tiempo / 3.44x más lento por mantenimiento de árboles B-Tree en cada fila)

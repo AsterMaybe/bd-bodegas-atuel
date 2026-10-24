@@ -14,7 +14,7 @@ from src.schemas.clientes import ClienteCreate, ClienteResponse, ClienteUpdate
 router = APIRouter()
 
 
-@router.get("")
+@router.get("", response_model=dict)
 async def get_clientes(
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
@@ -24,7 +24,7 @@ async def get_clientes(
     return result
 
 
-@router.get("/{id_cliente}")
+@router.get("/{id_cliente}", response_model=ClienteResponse)
 async def get_cliente(id_cliente: int):
     """Detalle de cliente con datos de subtipo."""
     result = await get_cliente_by_id(id_cliente)
@@ -33,7 +33,7 @@ async def get_cliente(id_cliente: int):
     return result
 
 
-@router.post("", status_code=201)
+@router.post("", status_code=201, response_model=ClienteResponse)
 async def post_cliente(cliente: ClienteCreate):
     """Alta de cliente con subtipo (socio/distribuidor/exportador)."""
     data = cliente.model_dump()
@@ -41,7 +41,7 @@ async def post_cliente(cliente: ClienteCreate):
     return result
 
 
-@router.put("/{id_cliente}")
+@router.put("/{id_cliente}", response_model=ClienteResponse)
 async def put_cliente(id_cliente: int, cliente: ClienteUpdate):
     """Modificación de cliente."""
     data = cliente.model_dump(exclude_unset=True)

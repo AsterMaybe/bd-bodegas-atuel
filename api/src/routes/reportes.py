@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, HTTPException, Query
 
 from src.db.queries.reportes import (
@@ -13,14 +15,14 @@ from src.db.queries.reportes import (
 router = APIRouter()
 
 
-@router.get("/top-vinos")
+@router.get("/top-vinos", response_model=dict[str, Any])
 async def get_top_vinos(limit: int = Query(default=10, ge=1, le=50)):
     """S1: Ranking de los 10 vinos más vendidos."""
     result = await top_vinos(limit=limit)
     return {"data": result}
 
 
-@router.get("/ventas-por-sala")
+@router.get("/ventas-por-sala", response_model=dict[str, Any])
 async def get_ventas_por_sala(
     desde: str | None = Query(default=None),
     hasta: str | None = Query(default=None),
@@ -30,14 +32,14 @@ async def get_ventas_por_sala(
     return {"data": result}
 
 
-@router.get("/vinos-sin-stock")
+@router.get("/vinos-sin-stock", response_model=dict[str, Any])
 async def get_vinos_sin_stock(id_sala: int = Query(..., gt=0)):
     """S6: Vinos sin stock en sala pero con stock en depósito."""
     result = await vinos_sin_stock(id_sala=id_sala)
     return {"data": result}
 
 
-@router.get("/transportista-activo")
+@router.get("/transportista-activo", response_model=dict[str, Any])
 async def get_transportista_activo(
     desde: str | None = Query(default=None),
     hasta: str | None = Query(default=None),
@@ -47,7 +49,7 @@ async def get_transportista_activo(
     return {"data": result}
 
 
-@router.get("/trazabilidad/{codigo_vino}")
+@router.get("/trazabilidad/{codigo_vino}", response_model=dict[str, Any])
 async def get_trazabilidad(codigo_vino: int):
     """S9/S12: Trazabilidad completa de un vino."""
     result = await trazabilidad(codigo_vino=codigo_vino)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, HTTPException, Query
 
 from src.db.queries.vinos import (
     create_vino,
@@ -11,13 +11,12 @@ from src.db.queries.vinos import (
     list_vinos,
     update_vino,
 )
-from src.schemas.common import PaginatedResponse
 from src.schemas.vinos import VinoCreate, VinoResponse, VinoUpdate
 
 router = APIRouter()
 
 
-@router.get("")
+@router.get("", response_model=dict)
 async def get_vinos(
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
@@ -34,17 +33,16 @@ async def get_vinos(
     return result
 
 
-@router.get("/{codigo_vino}")
+@router.get("/{codigo_vino}", response_model=VinoResponse)
 async def get_vino(codigo_vino: int):
     """Detalle de vino con composición y maridajes."""
     result = await get_vino_by_id(codigo_vino)
     if result is None:
-        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Vino no encontrado")
     return result
 
 
-@router.post("", status_code=201)
+@router.post("", status_code=201, response_model=VinoResponse)
 async def post_vino(vino: VinoCreate):
     """Alta de vino con composición de cepas."""
     data = vino.model_dump()
@@ -52,13 +50,12 @@ async def post_vino(vino: VinoCreate):
     return result
 
 
-@router.put("/{codigo_vino}")
+@router.put("/{codigo_vino}", response_model=VinoResponse)
 async def put_vino(codigo_vino: int, vino: VinoUpdate):
     """Modificación de vino (audita precio si cambia)."""
     data = vino.model_dump(exclude_unset=True)
     result = await update_vino(codigo_vino, data)
     if result is None:
-        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Vino no encontrado")
     return result
 
@@ -68,6 +65,5 @@ async def delete_vino_endpoint(codigo_vino: int):
     """Baja de vino."""
     deleted = await delete_vino(codigo_vino)
     if not deleted:
-        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Vino no encontrado")
     return None

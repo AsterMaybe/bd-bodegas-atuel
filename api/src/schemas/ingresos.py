@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date
+
 from pydantic import BaseModel, Field
 
 
@@ -21,7 +23,7 @@ class RenglonIngresoResponse(BaseModel):
 
 class IngresoResponse(BaseModel):
     id_documento: int
-    fecha: str
+    fecha: date | str
     estado: str
     cuit_bodega: str
     codigo_transp: int

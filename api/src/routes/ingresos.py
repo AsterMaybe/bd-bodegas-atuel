@@ -10,13 +10,14 @@ from src.db.queries.ingresos import (
 )
 from src.schemas.ingresos import (
     IngresoCreate,
+    IngresoResponse,
     RenglonIngresoCreate,
 )
 
 router = APIRouter()
 
 
-@router.post("", status_code=201)
+@router.post("", status_code=201, response_model=IngresoResponse)
 async def post_ingreso(ingreso: IngresoCreate):
     """Alta de ingreso (estado en_confeccion)."""
     data = ingreso.model_dump()
@@ -24,7 +25,7 @@ async def post_ingreso(ingreso: IngresoCreate):
     return result
 
 
-@router.post("/{cod}/renglones", status_code=201)
+@router.post("/{cod}/renglones", status_code=201, response_model=IngresoResponse)
 async def post_renglones_ingreso(cod: int, renglones: list[RenglonIngresoCreate]):
     """Carga de renglones mientras está en confección."""
     data = [r.model_dump() for r in renglones]
@@ -34,7 +35,7 @@ async def post_renglones_ingreso(cod: int, renglones: list[RenglonIngresoCreate]
     return result
 
 
-@router.post("/{cod}/procesar")
+@router.post("/{cod}/procesar", response_model=IngresoResponse)
 async def procesar_ingreso_endpoint(cod: int):
     """Procesa ingreso (invoca procedimiento almacenado)."""
     result = await procesar_ingreso(cod)
@@ -43,7 +44,7 @@ async def procesar_ingreso_endpoint(cod: int):
     return result
 
 
-@router.get("/{cod}")
+@router.get("/{cod}", response_model=IngresoResponse)
 async def get_ingreso(cod: int):
     """Detalle de ingreso con renglones."""
     result = await get_ingreso_by_id(cod)

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date
+
 from pydantic import BaseModel, Field
 
 
@@ -32,7 +34,7 @@ class ClienteResponse(BaseModel):
     tipo_doc: str
     nro_doc: str
     direccion: str | None = None
-    fecha_alta: str
+    fecha_alta: date | str
     descuento: float
     codigo_postal: str
     tipo: str | None = None

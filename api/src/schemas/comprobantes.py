@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 
@@ -25,7 +27,7 @@ class RenglonComprobanteResponse(BaseModel):
 
 class ComprobanteResponse(BaseModel):
     nro_comprob: int
-    fecha: str
+    fecha: datetime | str
     subtotal: float
     descuento: float
     total: float

@@ -5,19 +5,57 @@ services:
       dockerfile: Dockerfile
     image: bodegas_db:latest
     container_name: bodegas_db
+    env_file: .env
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: bodegas_atuel
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-bodegas_atuel}
     ports:
       - "5432:5432"
     volumes:
       # 1. Este volumen guarda tus datos de forma permanente en tu disco:
       - postgres_data:/var/lib/postgresql/data
-      # 2. Tus migraciones (solo se ejecutarA�n la PRIMERA VEZ que crees la BD):
+      # 2. Tus migraciones (solo se ejecutan la PRIMERA VEZ que crees la BD):
       - ./db/migrations:/docker-entrypoint-initdb.d
       # 3. Semillas disponibles dentro del contenedor para ejecutar cuando se quiera:
       - ./db/seed:/opt/seed
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d bodegas_atuel"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - bodegas-network
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: bodegas_api
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://app_rw:cambiar_por_un_secreto@db:5432/bodegas_atuel
+      PORT: "8000"
+      ENV: production
+      LOG_LEVEL: info
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/salud')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - bodegas-network
 
 volumes:
   postgres_data:
+
+networks:
+  bodegas-network:
+    driver: bridge

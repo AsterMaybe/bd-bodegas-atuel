@@ -39,3 +39,15 @@ class VinosFilter(BaseModel):
 class DateRangeParams(BaseModel):
     desde: str | None = None
     hasta: str | None = None
+
+
+class SaludResponse(BaseModel):
+    status: str
+    db: str
+
+
+class ErrorResponse(BaseModel):
+    statusCode: int
+    error: str
+    message: str
+    details: dict | None = None

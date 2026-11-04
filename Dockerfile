@@ -1,11 +1,16 @@
 FROM postgres:14
 
-# Herramientas para ejecutar la carga masiva (seed.py) dentro del contenedor
+# Instalar uv y herramientas para ejecutar la carga masiva (seed.py) dentro del contenedor
 RUN apt-get update \
- && apt-get install -y --no-install-recommends python3 python3-pip \
+ && apt-get install -y --no-install-recommends python3 python3-pip curl ca-certificates \
  && rm -rf /var/lib/apt/lists/*
 
-RUN python3 -m pip install --no-cache-dir --break-system-packages "psycopg[binary]" faker
+# Instalar uv
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:$PATH"
+
+# Usar uv para instalar dependencias Python (break-system-packages para Debian)
+RUN uv pip install --system --break-system-packages --no-cache "psycopg[binary]" faker
 
 # Semillas y catálogos disponibles en tiempo de ejecución
 COPY db/seed /opt/seed

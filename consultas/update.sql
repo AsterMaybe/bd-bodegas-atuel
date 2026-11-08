@@ -78,6 +78,8 @@ ROLLBACK;
 
 
 -- U3 - Incrementar un 13 % el precio de los vinos elaborados por una bodega determinada.
+-- Parámetros:
+-- $1: cuit_bodega (cuit_dom, ej: '20123456789')
 
 BEGIN;
 SELECT
@@ -86,11 +88,11 @@ nombre,
 cuit_bodega,
 precio AS precio_actual
 FROM VINO
-WHERE cuit_bodega = '20123456789'; -- Este cuit lo cambiamos segun la bodega que queramos aumentarle el precio.
+WHERE cuit_bodega = $1;
 
 UPDATE VINO
 SET precio = ROUND(precio * 1.13, 2)
-WHERE cuit_bodega = '20123456789';
+WHERE cuit_bodega = $1;
 
 SELECT
 codigo_vino,
@@ -98,7 +100,7 @@ nombre,
 cuit_bodega,
 precio AS precio_nuevo
 FROM VINO
-WHERE cuit_bodega = '20123456789';
+WHERE cuit_bodega = $1;
 
 SELECT
 id_auditoria,

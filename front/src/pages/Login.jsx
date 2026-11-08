@@ -10,13 +10,13 @@ import { Eye, EyeOff, ShieldCheck, User, Lock, ChevronRight, Check } from "lucid
 export default function Login() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(loginSchema),
@@ -27,12 +27,17 @@ export default function Login() {
     },
   });
 
+  const rememberMe = watch("rememberMe");
+
   const onSubmit = async (data) => {
     setError("");
     setIsLoading(true);
 
+    // Only send email and password to backend
+    const loginData = { email: data.email, password: data.password };
+
     try {
-      const result = await authApi.login(data);
+      const result = await authApi.login(loginData);
       localStorage.setItem("auth_token", result.access_token);
       localStorage.setItem("user", JSON.stringify(result.usuario));
       navigate("/");
@@ -189,8 +194,7 @@ export default function Login() {
                 <label className="flex items-center gap-[8px] cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
+                    {...register("rememberMe")}
                     className="w-[16px] h-[16px] rounded-[3px] border border-[#e7e3dd] bg-white appearance-none cursor-pointer checked:bg-[#742d40] checked:border-[#742d40] focus-visible:ring-2 focus-visible:ring-[#742d40] focus-visible:ring-offset-2 relative"
                   />
                   {rememberMe && (

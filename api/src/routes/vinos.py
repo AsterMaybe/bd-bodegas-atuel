@@ -24,10 +24,11 @@ async def get_vinos(
     cepa: int | None = Query(default=None),
     bodega: str | None = Query(default=None),
     aniada: int | None = Query(default=None),
+    search: str | None = Query(default=None),
 ):
-    """Catálogo de vinos con filtros y paginación."""
+    """Catálogo de vinos con filtros, búsqueda y paginación."""
     result = await list_vinos(
-        tipo=tipo, cepa=cepa, bodega=bodega, aniada=aniada,
+        tipo=tipo, cepa=cepa, bodega=bodega, aniada=aniada, search=search,
         page=page, limit=limit,
     )
     return result

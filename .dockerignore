@@ -1,0 +1,41 @@
+# Frontend
+front/node_modules
+front/dist
+front/.env
+front/.env.local
+front/*.log
+
+# API
+api/__pycache__
+api/*.pyc
+api/.env
+api/.pytest_cache
+api/venv
+api/env
+
+# Database
+*.sql
+*.dump
+
+# General
+.env
+.env.local
+*.log
+npm-debug.log*
+.DS_Store
+*.pem
+.vscode
+.idea
+*.swp
+*.swo
+*.tmp
+*.temp
+
+# Git
+.git
+.gitignore
+
+# OS
+Thumbs.db
+ehthumbs.db
+Desktop.ini

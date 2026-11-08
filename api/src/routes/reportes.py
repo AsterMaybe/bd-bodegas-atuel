@@ -10,6 +10,7 @@ from src.db.queries.reportes import (
     transportista_activo,
     ventas_por_sala,
     vinos_sin_stock,
+    get_dashboard_stats,
 )
 
 router = APIRouter()
@@ -56,3 +57,10 @@ async def get_trazabilidad(codigo_vino: int):
     if not result:
         raise HTTPException(status_code=404, detail="Vino no encontrado")
     return result
+
+
+@router.get("/dashboard-stats", response_model=dict[str, Any])
+async def get_dashboard_stats_endpoint():
+    """Estadísticas rápidas del dashboard: stock, ventas, catálogo e inventario."""
+    result = await get_dashboard_stats()
+    return {"data": result}

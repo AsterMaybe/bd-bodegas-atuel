@@ -10,6 +10,7 @@ async def list_vinos(
     cepa: int | None = None,
     bodega: str | None = None,
     aniada: int | None = None,
+    search: str | None = None,
     page: int = 1,
     limit: int = 20,
 ) -> dict[str, Any]:
@@ -29,6 +30,10 @@ async def list_vinos(
     if aniada is not None:
         conditions.append("v.añada = %s")
         params.append(aniada)
+    if search is not None:
+        search_term = f"%{search}%"
+        conditions.append("(v.nombre ILIKE %s OR v.codigo_vino::text ILIKE %s OR EXISTS (SELECT 1 FROM COMPOSICION_VINO cv2 JOIN CEPA c2 ON c2.id_cepa = cv2.id_cepa WHERE cv2.codigo_vino = v.codigo_vino AND c2.nombre ILIKE %s))")
+        params.extend([search_term, search_term, search_term])
 
     where_clause = " AND ".join(conditions) if conditions else "TRUE"
 
@@ -50,12 +55,21 @@ async def list_vinos(
     data_sql = f"""
         SELECT v.codigo_vino, v.nombre, v.tipo, v.añada, v.volumen_ml,
                v.graduacion, v.precio, v.cuit_bodega,
-               b.razon_social AS bodega_elaboradora
+               b.razon_social AS bodega_elaboradora,
+               COALESCE(sd.cantidad, 0) AS stock_deposito,
+               COALESCE(ss.stock_salas, 0) AS stock_total_salas,
+               COALESCE(sd.cantidad, 0) + COALESCE(ss.stock_salas, 0) AS stock_global
         FROM VINO v
         JOIN BODEGA b ON b.cuit = v.cuit_bodega
+        LEFT JOIN STOCK_DEPOSITO sd ON sd.codigo_vino = v.codigo_vino
+        LEFT JOIN (
+            SELECT codigo_vino, SUM(cantidad)::INTEGER AS stock_salas
+            FROM STOCK_SALA
+            GROUP BY codigo_vino
+        ) ss ON ss.codigo_vino = v.codigo_vino
         LEFT JOIN COMPOSICION_VINO cv ON cv.codigo_vino = v.codigo_vino
         WHERE {where_clause}
-        GROUP BY v.codigo_vino, b.razon_social
+        GROUP BY v.codigo_vino, b.razon_social, sd.cantidad, ss.stock_salas
         ORDER BY v.codigo_vino
         LIMIT %s OFFSET %s
     """
@@ -67,6 +81,7 @@ async def list_vinos(
     columns = [
         "codigo_vino", "nombre", "tipo", "aniada", "volumen_ml",
         "graduacion", "precio", "cuit_bodega", "bodega_elaboradora",
+        "stock_deposito", "stock_total_salas", "stock_global",
     ]
     data = [dict(zip(columns, r)) for r in rows]
 

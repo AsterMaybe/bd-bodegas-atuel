@@ -7,6 +7,7 @@ import random
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 import psycopg
+import bcrypt
 
 SEED = 42
 random.seed(SEED)
@@ -698,6 +699,30 @@ def main():
             if seq:
                 cur.execute(f"SELECT setval('{seq}', {mx}, false)")
     conn.commit()
+
+    # ---- USUARIOS DEL SISTEMA (bcrypt) ----
+    print("\nCreando usuarios del sistema...")
+    def create_usuarios():
+        with conn.cursor() as cur:
+            # Admin password: "admin123"
+            admin_hash = bcrypt.hashpw(b"admin123", bcrypt.gensalt()).decode()
+            cur.execute(
+                """INSERT INTO USUARIO (nombre, email, password_hash, rol, activo)
+                   VALUES (%s, %s, %s, %s, %s)
+                   ON CONFLICT (email) DO UPDATE SET password_hash=EXCLUDED.password_hash, rol=EXCLUDED.rol, activo=EXCLUDED.activo""",
+                ("Administrador del Sistema", "admin@bodegasatuel.com", admin_hash, "administrador", True)
+            )
+            # Empleado password: "empleado123"
+            emp_hash = bcrypt.hashpw(b"empleado123", bcrypt.gensalt()).decode()
+            cur.execute(
+                """INSERT INTO USUARIO (nombre, email, password_hash, rol, activo)
+                   VALUES (%s, %s, %s, %s, %s)
+                   ON CONFLICT (email) DO UPDATE SET password_hash=EXCLUDED.password_hash, rol=EXCLUDED.rol, activo=EXCLUDED.activo""",
+                ("Empleado de Bodega", "empleado@bodegasatuel.com", emp_hash, "empleado", True)
+            )
+        conn.commit()
+        return 2
+    timed("usuario", create_usuarios)
 
     # Ejecutar validaciones automáticamente
     print("\n=== VALIDACIONES ===")

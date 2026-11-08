@@ -1,0 +1,106 @@
+﻿/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {
+      colors: {
+        bg: '#f6f5f2',
+        sidebar: '#fcfbf9',
+        card: '#ffffff',
+        border: '#e7e3dd',
+        'border-light': '#f0ebe5',
+        primary: {
+          DEFAULT: '#742d40',
+          light: '#f3e9ec',
+        },
+        success: {
+          DEFAULT: '#446651',
+          light: '#edf3ee',
+        },
+        warning: {
+          DEFAULT: '#916a2f',
+          light: '#f7f0e4',
+        },
+        error: {
+          DEFAULT: '#c0392b',
+          light: '#fadbd8',
+        },
+        text: {
+          DEFAULT: '#292523',
+          muted: '#79736e',
+          light: '#a8a29c',
+        },
+        input: {
+          bg: '#ffffff',
+          readonly: '#f9f8f6',
+        },
+        hover: '#f0ebe5',
+        active: '#e7e3dd',
+        overlay: 'rgba(41, 37, 35, 0.5)',
+      },
+      fontFamily: {
+        sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+      },
+      fontSize: {
+        xs: ['9px', { lineHeight: '1.45' }],
+        sm: ['10px', { lineHeight: '1.45' }],
+        base: ['11px', { lineHeight: '1.45' }],
+        md: ['12px', { lineHeight: '1.45' }],
+        lg: ['13px', { lineHeight: '1.45' }],
+        xl: ['14px', { lineHeight: '1.45' }],
+        '2xl': ['15px', { lineHeight: '1.25' }],
+        '3xl': ['21px', { lineHeight: '1.25' }],
+        '4xl': ['28px', { lineHeight: '1.2' }],
+        '5xl': ['29px', { lineHeight: '1.2' }],
+      },
+      spacing: {
+        '1': '4px',
+        '2': '6px',
+        '3': '8px',
+        '4': '10px',
+        '5': '12px',
+        '6': '14px',
+        '7': '16px',
+        '8': '18px',
+        '9': '20px',
+        '10': '22px',
+        '11': '24px',
+        '12': '26px',
+        '13': '28px',
+        '14': '30px',
+        '15': '32px',
+        '16': '34px',
+        '18': '38px',
+        '20': '40px',
+      },
+      borderRadius: {
+        sm: '3px',
+        md: '4px',
+        lg: '6px',
+        xl: '8px',
+        '2xl': '10px',
+        full: '100px',
+        'avatar-sm': '24px',
+        'avatar-md': '28px',
+        'avatar-lg': '34px',
+      },
+      boxShadow: {
+        sm: '0 1px 2px rgba(41, 37, 35, 0.05)',
+        md: '0 4px 6px rgba(41, 37, 35, 0.07)',
+        lg: '0 10px 15px rgba(41, 37, 35, 0.1)',
+      },
+      transitionDuration: {
+        fast: '150ms',
+        base: '200ms',
+        slow: '300ms',
+      },
+      transitionTimingFunction: {
+        DEFAULT: 'ease',
+      },
+    },
+  },
+  plugins: [],
+}

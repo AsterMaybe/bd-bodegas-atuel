@@ -1,6 +1,8 @@
 -- CONSULTAS
 
 -- S1 - Ranking de los 10 vinos con mayor cantidad de botellas vendidas en toda la red de salas.
+-- Parámetros:
+-- $1: limit (entero, ej: 10)
 EXPLAIN (ANALYZE)
 SELECT 
     v.codigo_vino,
@@ -17,7 +19,7 @@ GROUP BY
     v.volumen_ml
 ORDER BY 
     total_botellas_vendidas DESC
-LIMIT 10;
+LIMIT $1;
 -- Fueron 6.4 ms de Planning Time y apenas 178.4 ms de Execution Time.
 -- Hacemos un JOIN estándar (interno) entre el catálogo de VINO y el detalle de ventas (RENGLON_COMPROBANTE). 
 -- Agrupamos (GROUP BY) obligatoriamente por la clave primaria del vino y los atributos descriptivos que forman su unicidad 
@@ -40,10 +42,12 @@ WHERE NOT EXISTS (
           AND rc.codigo_vino = v.codigo_vino
     )
 );
--- -- Implementa la división relacional estricta mediante una doble negación lógica (NOT EXISTS)
+-- Implementa la división relacional estricta mediante una doble negación lógica (NOT EXISTS)
 
 
 -- S3 - Cantidad de clientes de cada tipo que compraron en una sala determinada en la última semana.
+-- Parámetros:
+-- $1: id_sala (entero, ej: 1)
 WITH ClientesCompras AS (
     SELECT DISTINCT 
         comp.id_cliente,
@@ -57,7 +61,7 @@ WITH ClientesCompras AS (
     LEFT JOIN SOCIO_CLUB sc ON comp.id_cliente = sc.id_cliente
     LEFT JOIN DISTRIBUIDOR d ON comp.id_cliente = d.id_cliente
     LEFT JOIN EXPORTADOR e ON comp.id_cliente = e.id_cliente
-    WHERE comp.id_sala = 1 -- La sala que queramos elegir
+    WHERE comp.id_sala = $1
       AND comp.fecha >= CURRENT_TIMESTAMP - INTERVAL '7 days'
 )
 SELECT 
@@ -69,6 +73,8 @@ GROUP BY tipo_cliente;
 
 
 -- S4 - Top 5 de las salas que solicitaron mayor cantidad de un vino determinado mediante transferencias en los últimos 15 días.
+-- Parámetros:
+-- $1: codigo_vino (entero, ej: 1)
 EXPLAIN (ANALYZE)
 SELECT 
     s.id_sala,
@@ -81,7 +87,7 @@ JOIN RENGLON_TRANSFERENCIA rt ON t.id_documento = rt.id_documento
 JOIN SALA_VENTA s ON t.id_sala = s.id_sala
 JOIN LOCALIDAD l ON s.codigo_postal = l.codigo_postal
 WHERE 
-    rt.codigo_vino = 1  -- Cambiar segun el vino que se quiera elegir
+    rt.codigo_vino = $1
     AND t.fecha >= CURRENT_DATE - INTERVAL '15 days'
 GROUP BY 
     s.id_sala,
@@ -120,13 +126,15 @@ WHERE cantidad_pendientes = (SELECT MIN(cantidad_pendientes) FROM PendientesPorS
 
 
 -- S6 - Para una sala determinada, los vinos sin stock en la sala pero con stock en el depósito central.
+-- Parámetros:
+-- $1: id_sala (entero, ej: 1)
 SELECT 
     v.codigo_vino, 
     v.nombre,
     sd.cantidad AS stock_en_deposito
 FROM VINO v
 JOIN STOCK_DEPOSITO sd ON v.codigo_vino = sd.codigo_vino
-LEFT JOIN STOCK_SALA ss ON v.codigo_vino = ss.codigo_vino AND ss.id_sala = 1 -- [PARÁMETRO]: ID de la sala determinada
+LEFT JOIN STOCK_SALA ss ON v.codigo_vino = ss.codigo_vino AND ss.id_sala = $1
 WHERE sd.cantidad > 0 
   AND COALESCE(ss.cantidad, 0) = 0;
 
@@ -157,6 +165,9 @@ WHERE cantidad_ingresos = (SELECT MAX(cantidad_ingresos) FROM ActividadTransport
 
 
 -- S8 - Monto total de ventas por sala en el último trimestre, en orden descendente.
+-- Parámetros:
+-- $1: fecha_desde (date, ej: CURRENT_DATE - INTERVAL '3 months')
+-- $2: fecha_hasta (date, ej: CURRENT_DATE)
 EXPLAIN (ANALYZE)
 SELECT 
     sv.id_sala,
@@ -166,7 +177,8 @@ SELECT
 FROM SALA_VENTA sv
 JOIN COMPROBANTE c ON sv.id_sala = c.id_sala
 WHERE 
-    c.fecha >= CURRENT_DATE - INTERVAL '3 months'
+    c.fecha >= $1
+    AND c.fecha <= $2
 GROUP BY 
     sv.id_sala,
     sv.calle,
@@ -182,8 +194,9 @@ ORDER BY
 -- CONSULTAS AVANZADAS
 
 -- S9 - Ficha de un vino: cepas con sus porcentajes, bodega elaboradora, maridajes y stock total (depósito más salas).
--- Herramienta esperada: Joins, agregación y vista.  
-
+-- Herramienta esperada: Joins, agregación y vista.  
+-- Parámetros:
+-- $1: codigo_vino (entero, ej: 1)
 EXPLAIN (ANALYZE)
 WITH CepasAgrupadas AS (
     SELECT 
@@ -191,7 +204,7 @@ WITH CepasAgrupadas AS (
         STRING_AGG(c.nombre || ' (' || cv.porcentaje || '%)', ', ') AS cepas
     FROM COMPOSICION_VINO cv
     JOIN CEPA c ON cv.id_cepa = c.id_cepa
-    WHERE cv.codigo_vino = 1 -- El vino al que le quiera hacer la ficha
+    WHERE cv.codigo_vino = $1
     GROUP BY cv.codigo_vino
 ),
 MaridajesAgrupados AS (
@@ -200,7 +213,7 @@ MaridajesAgrupados AS (
         STRING_AGG(m.nombre, ', ') AS maridajes
     FROM VINO_MARIDAJE vm
     JOIN MARIDAJE m ON vm.id_maridaje = m.id_maridaje
-    WHERE vm.codigo_vino = 1
+    WHERE vm.codigo_vino = $1
     GROUP BY vm.codigo_vino
 )
 SELECT 
@@ -213,13 +226,13 @@ SELECT
 FROM vw_stock_total_vino v
 LEFT JOIN CepasAgrupadas ca ON v.codigo_vino = ca.codigo_vino
 LEFT JOIN MaridajesAgrupados ma ON v.codigo_vino = ma.codigo_vino
-WHERE v.codigo_vino = 1;
+WHERE v.codigo_vino = $1;
 -- Planning Time: 14.948 ms y Execution Time: 5.332 ms
 -- Aprovechamos la vista vw_stock_total_vino para obtener directamente el stock y la bodega, 
 -- cruzándola con CTEs que agrupan las cepas y maridajes para evitar registros duplicados.
 
 
--- S10 - Rendimiento en kg por hectárea de cada parcela y campaña, e identificar las parcelas que rinden menos que el promedio de su finca. 
+-- S10 - Rendimiento en kg por hectárea de cada parcela y campaña, e identificar las parcelas que rinden menos que el promedio de su finca.  
 -- Herramienta esperada: CTE y subconsulta correlacionada.
 
 EXPLAIN (ANALYZE)
@@ -294,6 +307,8 @@ ORDER BY id_sala, mes, ranking_en_sala;
 
 -- S12 - Clientes que compraron todos los vinos de una bodega determinada, y clientes que nunca compraron ningún vino tinto.
 -- Herramienta esperada: NOT EXISTS (división) y anti-join.
+-- Parámetros:
+-- $1: cuit_bodega (cuit_dom, ej: '20123456789')
 
 -- Primera parte: Clientes que compraron todos los vinos de la bodega
 EXPLAIN (ANALYZE)
@@ -304,7 +319,7 @@ FROM CLIENTE c
 WHERE NOT EXISTS (
     SELECT v.codigo_vino 
     FROM VINO v 
-    WHERE v.cuit_bodega = '20123456789' -- bodega elegida
+    WHERE v.cuit_bodega = $1
     AND NOT EXISTS (
         SELECT 1 
         FROM COMPROBANTE comp

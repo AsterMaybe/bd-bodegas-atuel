@@ -70,6 +70,8 @@ ROLLBACK;
 
 
 -- D3 - La sala de una localidad determinada fue dada de baja: eliminar los empleados de esa sala que trabajaron menos de dos años.
+-- Parámetros:
+-- $1: codigo_postal (localidad_dom, ej: 5620 = General Alvear)
 
 BEGIN;
 SELECT 
@@ -83,7 +85,7 @@ FROM PERSONAL p
 JOIN EMPLEADO e ON p.cuit = e.cuit
 JOIN SALA_VENTA s ON e.id_sala = s.id_sala
 JOIN LOCALIDAD l ON s.codigo_postal = l.codigo_postal
-WHERE l.nombre = 'General Alvear' -- Localidad que se quiera elegir
+WHERE l.codigo_postal = $1
   AND fn_antiguedad_anios(p.fecha_ingreso) < 2;
 
 DELETE FROM PERSONAL p
@@ -91,7 +93,7 @@ USING EMPLEADO e, SALA_VENTA s, LOCALIDAD l
 WHERE p.cuit = e.cuit
   AND e.id_sala = s.id_sala
   AND s.codigo_postal = l.codigo_postal
-  AND l.nombre = 'General Alvear' 
+AND l.codigo_postal = $1
   AND fn_antiguedad_anios(p.fecha_ingreso) < 2;
 
 SELECT 
@@ -105,7 +107,7 @@ FROM PERSONAL p
 JOIN EMPLEADO e ON p.cuit = e.cuit
 JOIN SALA_VENTA s ON e.id_sala = s.id_sala
 JOIN LOCALIDAD l ON s.codigo_postal = l.codigo_postal
-WHERE l.nombre = 'General Alvear' 
+WHERE l.codigo_postal = $1
   AND fn_antiguedad_anios(p.fecha_ingreso) < 2;
 ROLLBACK;
 -- Se utiliza la cláusula USING en el DELETE para resolver de forma limpia la cadena de JOINs desde EMPLEADO 
@@ -149,9 +151,9 @@ WHERE NOT EXISTS (
 AND fn_antiguedad_anios(c.fecha_alta) > 5;
 ROLLBACK;
 -- Se utiliza el nombre exacto de la tabla subclase SOCIO_CLUB y el atributo fecha_alta de la superclase 
--- CLIENTE[cite: 1]. La eliminación se ejecuta sobre CLIENTE utilizando USING para el JOIN; gracias a la restricción 
--- fk_socio_club_cliente configurada con ON DELETE CASCADE[cite: 2], el motor se encargará automáticamente de borrar 
--- el registro dependiente en la subclase, asegurando la integridad. El cálculo temporal reutiliza fn_antiguedad_anios()[cite: 3].
+-- CLIENTE. La eliminación se ejecuta sobre CLIENTE utilizando USING para el JOIN; gracias a la restricción 
+-- fk_socio_club_cliente configurada con ON DELETE CASCADE, el motor se encargará automáticamente de borrar 
+-- el registro dependiente en la subclase, asegurando la integridad. El cálculo temporal reutiliza fn_antiguedad_anios().
 
 
 -- D5 - Eliminar los ingresos en estado procesado de hace más de 365 días.
@@ -182,12 +184,14 @@ WHERE estado = 'procesado'
   AND (CURRENT_DATE - fecha) > 365;
 ROLLBACK;
 -- Se filtra directamente la cabecera en la tabla INGRESO verificando el valor exacto del ENUM estado ('procesado') y 
--- restando la fecha del documento a la fecha actual del sistema para validar que superen los 365 días[cite: 1]. 
+-- restando la fecha del documento a la fecha actual del sistema para validar que superen los 365 días. 
 -- La eliminación se propagará a los renglones asociados de forma transparente gracias a la restricción fk_renglon_ingreso_cabecera 
--- en RENGLON_INGRESO, la cual está configurada con ON DELETE CASCADE[cite: 2].
+-- en RENGLON_INGRESO, la cual está configurada con ON DELETE CASCADE.
 
 
 -- D6 - Borrar los clientes socios sin compras que viven en una localidad específica.
+-- Parámetros:
+-- $1: codigo_postal (localidad_dom, ej: 5600 = San Rafael)
 
 BEGIN;
 SELECT 
@@ -198,7 +202,7 @@ SELECT
 FROM CLIENTE c
 JOIN SOCIO_CLUB sc ON c.id_cliente = sc.id_cliente
 JOIN LOCALIDAD l ON c.codigo_postal = l.codigo_postal
-WHERE l.nombre = 'San Rafael' -- Localidad que se quiera elegir
+WHERE l.codigo_postal = $1
   AND NOT EXISTS (
       SELECT 1 FROM COMPROBANTE comp WHERE comp.id_cliente = c.id_cliente
   );
@@ -207,7 +211,7 @@ DELETE FROM CLIENTE c
 USING SOCIO_CLUB sc, LOCALIDAD l
 WHERE c.id_cliente = sc.id_cliente
   AND c.codigo_postal = l.codigo_postal
-  AND l.nombre = 'San Rafael' 
+  AND l.codigo_postal = $1
   AND NOT EXISTS (
       SELECT 1 FROM COMPROBANTE comp WHERE comp.id_cliente = c.id_cliente
   );
@@ -220,12 +224,12 @@ SELECT
 FROM CLIENTE c
 JOIN SOCIO_CLUB sc ON c.id_cliente = sc.id_cliente
 JOIN LOCALIDAD l ON c.codigo_postal = l.codigo_postal
-WHERE l.nombre = 'San Rafael'
+WHERE l.codigo_postal = $1
   AND NOT EXISTS (
       SELECT 1 FROM COMPROBANTE comp WHERE comp.id_cliente = c.id_cliente
   );
 ROLLBACK;
 -- Se utiliza la cláusula USING en el DELETE para cruzar la superclase CLIENTE con la subclase SOCIO_CLUB y con la tabla 
--- LOCALIDAD, permitiendo filtrar por el nombre del parámetro[cite: 1]. La ausencia de compras se verifica eficientemente 
--- mediante NOT EXISTS sobre la tabla COMPROBANTE[cite: 1]. Al borrar de la superclase, el registro en SOCIO_CLUB se elimina 
--- automáticamente gracias a la restricción fk_socio_club_cliente configurada con ON DELETE CASCADE[cite: 2].
+-- LOCALIDAD, permitiendo filtrar por el código postal (clave primaria). La ausencia de compras se verifica eficientemente 
+-- mediante NOT EXISTS sobre la tabla COMPROBANTE. Al borrar de la superclase, el registro en SOCIO_CLUB se elimina 
+-- automáticamente gracias a la restricción fk_socio_club_cliente configurada con ON DELETE CASCADE.

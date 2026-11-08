@@ -10,7 +10,7 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 ENV PATH="/root/.local/bin:$PATH"
 
 # Usar uv para instalar dependencias Python (break-system-packages para Debian)
-RUN uv pip install --system --break-system-packages --no-cache "psycopg[binary]" faker
+RUN uv pip install --system --break-system-packages --no-cache "psycopg[binary]" faker python-dotenv
 
 # Semillas y catálogos disponibles en tiempo de ejecución
 COPY db/seed /opt/seed

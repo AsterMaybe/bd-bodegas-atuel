@@ -16,11 +16,13 @@ router = APIRouter()
 
 @router.get("", response_model=dict)
 async def get_clientes(
-    page: int = Query(default=1, ge=1),
-    limit: int = Query(default=20, ge=1, le=100),
+    page: int = Query(default=1, ge=1, description="Número de página"),
+    limit: int = Query(default=20, ge=1, le=100, description="Registros por página (máx 100)"),
+    tipo: str | None = Query(default=None, description="Filtrar por tipo: socio, distribuidor, exportador"),
+    search: str | None = Query(default=None, description="Buscar por nombre, tipo_doc o nro_doc"),
 ):
-    """Lista clientes con paginación."""
-    result = await list_clientes(page=page, limit=limit)
+    """Lista clientes con paginación y filtros opcionales."""
+    result = await list_clientes(page=page, limit=limit, tipo=tipo, search=search)
     return result
 
 

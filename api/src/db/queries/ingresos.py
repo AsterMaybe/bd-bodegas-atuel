@@ -62,6 +62,66 @@ async def procesar_ingreso(id_documento: int) -> dict[str, Any] | None:
         return dict(zip(columns, row))
 
 
+async def list_ingresos(
+    page: int = 1,
+    limit: int = 20,
+    estado: str | None = None,
+    search: str | None = None,
+) -> dict[str, Any]:
+    """Lista ingresos con paginación, filtro por estado y búsqueda."""
+    page = max(1, page)
+    limit = min(max(1, limit), 100)
+
+    pool = await get_pool()
+    async with pool.connection() as conn:
+        where_clauses = []
+        params = []
+
+        if estado and estado != "all":
+            where_clauses.append("estado = %s")
+            params.append(estado)
+
+        if search:
+            where_clauses.append("(id_documento::text ILIKE %s OR cuit_bodega ILIKE %s OR codigo_transp::text ILIKE %s)")
+            like = f"%{search}%"
+            params.extend([like, like, like])
+
+        where_sql = "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
+
+        # Count total
+        count_sql = f"SELECT COUNT(*) FROM INGRESO {where_sql}"
+        cur = await conn.execute(count_sql, params)
+        total = (await cur.fetchone())[0] or 0
+
+        # Data paginada
+        offset = (page - 1) * limit
+        data_sql = f"""
+            SELECT id_documento, fecha, estado, cuit_bodega, codigo_transp
+            FROM INGRESO
+            {where_sql}
+            ORDER BY id_documento
+            LIMIT %s OFFSET %s
+        """
+        params.extend([limit, offset])
+        cur = await conn.execute(data_sql, params)
+        rows = await cur.fetchall()
+
+    data = [{"id_documento": r[0], "fecha": str(r[1]), "estado": r[2], "cuit_bodega": r[3], "codigo_transp": r[4]} for r in rows]
+    total_pages = (total + limit - 1) // limit if total > 0 else 1
+
+    return {
+        "data": data,
+        "metadata": {
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "total_pages": total_pages,
+            "has_next": page < total_pages,
+            "has_prev": page > 1,
+        },
+    }
+
+
 async def get_ingreso_by_id(id_documento: int) -> dict[str, Any] | None:
     """Detalle de ingreso con renglones."""
     pool = await get_pool()
@@ -86,3 +146,33 @@ async def get_ingreso_by_id(id_documento: int) -> dict[str, Any] | None:
         result["renglones"] = [dict(zip(reng_cols, r)) for r in reng_rows]
 
         return result
+
+
+async def terminar_ingreso(id_documento: int) -> dict[str, Any] | None:
+    """Cambia estado de ingreso a 'terminado' (valida que tenga renglones)."""
+    # Validar que tenga renglones
+    pool = await get_pool()
+    async with pool.connection() as conn:
+        cur = await conn.execute(
+            "SELECT COUNT(*) FROM RENGLON_INGRESO WHERE id_documento = %s",
+            (id_documento,),
+        )
+        count = (await cur.fetchone())[0] or 0
+        if count == 0:
+            raise ValueError("El ingreso debe tener al menos un renglón para terminarse")
+
+    sql = """
+        UPDATE INGRESO
+        SET estado = 'terminado'
+        WHERE id_documento = %s
+        RETURNING id_documento, fecha, estado, cuit_bodega, codigo_transp
+    """
+    pool = await get_pool()
+    async with pool.connection() as conn:
+        cur = await conn.execute(sql, (id_documento,))
+        row = await cur.fetchone()
+        if row is None:
+            return None
+
+    columns = ["id_documento", "fecha", "estado", "cuit_bodega", "codigo_transp"]
+    return dict(zip(columns, row))

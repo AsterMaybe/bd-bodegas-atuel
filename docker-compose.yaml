@@ -1,4 +1,5 @@
 services:
+  # Base de datos PostgreSQL
   db:
     build:
       context: .
@@ -13,11 +14,8 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      # 1. Este volumen guarda tus datos de forma permanente en tu disco:
       - postgres_data:/var/lib/postgresql/data
-      # 2. Tus migraciones (solo se ejecutan la PRIMERA VEZ que crees la BD):
       - ./db/migrations:/docker-entrypoint-initdb.d
-      # 3. Semillas disponibles dentro del contenedor para ejecutar cuando se quiera:
       - ./db/seed:/opt/seed
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d bodegas_atuel"]
@@ -28,14 +26,16 @@ services:
     networks:
       - bodegas-network
 
+  # API FastAPI
   api:
     build:
       context: ./api
       dockerfile: Dockerfile
+    image: bodegas_api:latest
     container_name: bodegas_api
     env_file: .env
     environment:
-      DATABASE_URL: postgresql://app_rw:cambiar_por_un_secreto@db:5432/bodegas_atuel
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@db:5432/${POSTGRES_DB:-bodegas_atuel}
       PORT: "8000"
       ENV: production
       LOG_LEVEL: info
@@ -45,11 +45,27 @@ services:
       db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/salud')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 15s
+    networks:
+      - bodegas-network
+
+  # Frontend React + Nginx
+  front:
+    build:
+      context: ./front
+      dockerfile: Dockerfile
+    image: bodegas_front:latest
+    container_name: bodegas_front
+    ports:
+      - "0.0.0.0:3000:80"
+      - "[::]:3000:80"
+    depends_on:
+      api:
+        condition: service_healthy
     networks:
       - bodegas-network
 

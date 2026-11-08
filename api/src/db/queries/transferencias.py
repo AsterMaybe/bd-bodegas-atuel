@@ -80,6 +80,67 @@ async def procesar_transferencia(id_documento: int) -> dict[str, Any] | None:
         return dict(zip(columns, row))
 
 
+async def list_transferencias(
+    page: int = 1,
+    limit: int = 20,
+    estado: str | None = None,
+    search: str | None = None,
+) -> dict[str, Any]:
+    """Lista transferencias con paginación, filtro por estado y búsqueda."""
+    page = max(1, page)
+    limit = min(max(1, limit), 100)
+
+    pool = await get_pool()
+    async with pool.connection() as conn:
+        where_clauses = []
+        params = []
+
+        if estado and estado != "all":
+            where_clauses.append("estado = %s")
+            params.append(estado)
+
+        if search:
+            # Buscar por ID de transferencia o ID de sala
+            where_clauses.append("(id_documento::text ILIKE %s OR id_sala::text ILIKE %s)")
+            like = f"%{search}%"
+            params.extend([like, like])
+
+        where_sql = "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
+
+        # Count total
+        count_sql = f"SELECT COUNT(*) FROM TRANSFERENCIA {where_sql}"
+        cur = await conn.execute(count_sql, params)
+        total = (await cur.fetchone())[0] or 0
+
+        # Data paginada
+        offset = (page - 1) * limit
+        data_sql = f"""
+            SELECT id_documento, fecha, estado, id_sala
+            FROM TRANSFERENCIA
+            {where_sql}
+            ORDER BY id_documento
+            LIMIT %s OFFSET %s
+        """
+        params.extend([limit, offset])
+        cur = await conn.execute(data_sql, params)
+        rows = await cur.fetchall()
+
+    data = [{"id_documento": r[0], "fecha": str(r[1]), "estado": r[2], "id_sala": r[3]} for r in rows]
+    total_pages = (total + limit - 1) // limit if total > 0 else 1
+
+    return {
+        "data": data,
+        "metadata": {
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "total_pages": total_pages,
+            "has_next": page < total_pages,
+            "has_prev": page > 1,
+        },
+    }
+
+
 async def get_transferencia_by_id(id_documento: int) -> dict[str, Any] | None:
     """Detalle de transferencia con renglones."""
     pool = await get_pool()

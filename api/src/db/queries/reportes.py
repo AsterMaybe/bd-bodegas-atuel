@@ -187,3 +187,137 @@ async def trazabilidad(codigo_vino: int) -> dict[str, Any]:
             "composicion", "maridajes", "stock_deposito", "stock_total_salas",
         ]
         return dict(zip(columns, row))
+
+
+async def get_dashboard_stats() -> dict[str, Any]:
+    """Estadísticas rápidas del dashboard: stock, ventas, catálogo e inventario."""
+    async def _get(ctx):
+        # ---- Stock depósito ----
+        cur = await ctx.execute("SELECT COALESCE(SUM(cantidad), 0) FROM STOCK_DEPOSITO")
+        stock_deposito = (await cur.fetchone())[0]
+
+        # ---- Stock salas ----
+        cur = await ctx.execute("SELECT COALESCE(SUM(cantidad), 0) FROM STOCK_SALA")
+        stock_salas = (await cur.fetchone())[0]
+
+        # ---- Vinos con stock crítico (< 12 botellas total y > 0) ----
+        cur = await ctx.execute("""
+            SELECT COUNT(*)
+            FROM (
+                SELECT v.codigo_vino,
+                       COALESCE(SUM(sd.cantidad), 0) + COALESCE(SUM(ss.cantidad), 0) AS total_stock
+                FROM VINO v
+                LEFT JOIN STOCK_DEPOSITO sd ON sd.codigo_vino = v.codigo_vino
+                LEFT JOIN STOCK_SALA ss ON ss.codigo_vino = v.codigo_vino
+                GROUP BY v.codigo_vino
+                HAVING COALESCE(SUM(sd.cantidad), 0) + COALESCE(SUM(ss.cantidad), 0) > 0
+                   AND COALESCE(SUM(sd.cantidad), 0) + COALESCE(SUM(ss.cantidad), 0) < 12
+            ) s
+        """)
+        stock_critico = (await cur.fetchone())[0]
+
+        # ---- Vinos sin stock en sala pero con stock en depósito ----
+        cur = await ctx.execute("""
+            SELECT COUNT(*)
+            FROM (
+                SELECT v.codigo_vino
+                FROM VINO v
+                LEFT JOIN STOCK_DEPOSITO sd ON sd.codigo_vino = v.codigo_vino
+                LEFT JOIN STOCK_SALA ss ON ss.codigo_vino = v.codigo_vino
+                GROUP BY v.codigo_vino
+                HAVING COALESCE(SUM(ss.cantidad), 0) = 0
+                   AND COALESCE(SUM(sd.cantidad), 0) > 0
+            ) s
+        """)
+        vinos_sin_stock_sala = (await cur.fetchone())[0]
+
+        # ---- Valor total inventario depósito (precio × cantidad) ----
+        cur = await ctx.execute("""
+            SELECT COALESCE(SUM(v.precio * COALESCE(sd.cantidad, 0)), 0)
+            FROM VINO v
+            LEFT JOIN STOCK_DEPOSITO sd ON sd.codigo_vino = v.codigo_vino
+        """)
+        valor_inventario = float((await cur.fetchone())[0])
+
+        # ---- Ventas último mes (monto y botellas) ----
+        cur = await ctx.execute("""
+            SELECT COALESCE(SUM(c.total), 0), COALESCE(SUM(rc.cantidad), 0)
+            FROM COMPROBANTE c
+            LEFT JOIN RENGLON_COMPROBANTE rc ON rc.nro_comprob = c.nro_comprob
+            WHERE c.fecha >= CURRENT_DATE - INTERVAL '30 days'
+        """)
+        row = await cur.fetchone()
+        ventas_ultimo_mes_monto = float(row[0])
+        ventas_ultimo_mes_botellas = int(row[1])
+
+        # ---- Top 3 vinos más vendidos (últimos 30 días) ----
+        cur = await ctx.execute("""
+            SELECT v.codigo_vino, v.nombre,
+                   COALESCE(SUM(rc.cantidad), 0) AS botellas,
+                   COALESCE(SUM(rc.subtotal), 0) AS monto
+            FROM VINO v
+            LEFT JOIN RENGLON_COMPROBANTE rc ON rc.codigo_vino = v.codigo_vino
+            LEFT JOIN COMPROBANTE c ON c.nro_comprob = rc.nro_comprob
+            WHERE c.fecha >= CURRENT_DATE - INTERVAL '30 days' OR c.nro_comprob IS NULL
+            GROUP BY v.codigo_vino, v.nombre
+            ORDER BY botellas DESC, monto DESC
+            LIMIT 3
+        """)
+        top_vinos_rows = await cur.fetchall()
+        top_vinos = [
+            {"codigo_vino": r[0], "nombre": r[1], "botellas": int(r[2]), "monto": float(r[3])}
+            for r in top_vinos_rows
+        ]
+
+        # ---- Vinos por tipo ----
+        cur = await ctx.execute("""
+            SELECT v.tipo, COUNT(*) AS cantidad
+            FROM VINO v
+            GROUP BY v.tipo
+            ORDER BY cantidad DESC
+        """)
+        tipos_rows = await cur.fetchall()
+        tipos_vinos = [{"tipo": r[0], "cantidad": int(r[1])} for r in tipos_rows]
+
+        # ---- Añada más antigua con stock ----
+        cur = await ctx.execute("""
+            SELECT MIN(añada) FROM (
+                SELECT v.añada,
+                       COALESCE(SUM(sd.cantidad), 0) + COALESCE(SUM(ss.cantidad), 0) AS total_stock
+                FROM VINO v
+                LEFT JOIN STOCK_DEPOSITO sd ON sd.codigo_vino = v.codigo_vino
+                LEFT JOIN STOCK_SALA ss ON ss.codigo_vino = v.codigo_vino
+                GROUP BY v.añada
+                HAVING COALESCE(SUM(sd.cantidad), 0) + COALESCE(SUM(ss.cantidad), 0) > 0
+            ) s
+        """)
+        anada_antigua = (await cur.fetchone())[0]
+
+        # ---- Total vinos ----
+        cur = await ctx.execute("SELECT COUNT(*) FROM VINO")
+        total_vinos = (await cur.fetchone())[0]
+
+        return {
+            "stock": {
+                "total_deposito": int(stock_deposito),
+                "total_salas": int(stock_salas),
+                "criticos": int(stock_critico),
+                "sin_stock_sala": int(vinos_sin_stock_sala),
+            },
+            "ventas": {
+                "ultimo_mes": {
+                    "monto": round(ventas_ultimo_mes_monto, 2),
+                    "botellas": ventas_ultimo_mes_botellas,
+                },
+                "top_vinos": top_vinos,
+            },
+            "catalogo": {
+                "total_vinos": int(total_vinos),
+                "por_tipo": tipos_vinos,
+                "anada_mas_antigua_con_stock": anada_antigua,
+            },
+            "valor_inventario_total": round(valor_inventario, 2),
+        }
+
+    from src.db.pool import with_transaction_ro
+    return await with_transaction_ro(_get)

@@ -6,11 +6,12 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 # Instalar uv
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh \
+ && ln -sf /root/.local/bin/uv /usr/local/bin/uv
 ENV PATH="/root/.local/bin:$PATH"
 
 # Usar uv para instalar dependencias Python (break-system-packages para Debian)
-RUN uv pip install --system --break-system-packages --no-cache "psycopg[binary]" faker python-dotenv
+RUN uv pip install --system --break-system-packages --no-cache "psycopg[binary]" faker python-dotenv bcrypt
 
 # Semillas y catálogos disponibles en tiempo de ejecución
 COPY db/seed /opt/seed

@@ -3,7 +3,17 @@
 # Empty the database (drop all tables, keep volumes)
 # Usage: ./empty-db.sh [--yes]  (skip confirmation with --yes)
 # ============================================================
-cd "$(dirname "$0")/../Proyecto-db"
+set -e
+
+cd "$(dirname "$0")/../.." || {
+    echo "ERROR: Could not find the project root from $(dirname "$0")/../.."
+    exit 1
+}
+
+if [ ! -f db/empty_database.sql ]; then
+    echo "ERROR: db/empty_database.sql not found in $(pwd)."
+    exit 1
+fi
 
 # Check for --yes flag to skip confirmation
 if [ "$1" = "--yes" ]; then

@@ -1,11 +1,14 @@
 # Proyecto DB - Docker Scripts
 
-Scripts para gestionar el entorno Docker de Bodegas del Atuel desde fuera del proyecto.
+Scripts para gestionar el entorno Docker de Bodegas del Atuel.
 
 ## Ubicación
-```
-C:\Users\Aster\Desktop\Proyecto-db-scripts\
-```
+Estos scripts viven dentro del repositorio, en `db-scripts/`, y funcionan
+desde cualquier directorio: cada script detecta la raíz del proyecto
+(`bd-bodegas-atuel/`) a partir de su propia ubicación.
+
+Si falta el archivo `.env`, `up-all` y `rebuild-all` lo crean automáticamente
+copiando `.env.example`.
 
 ## Scripts Disponibles
 
@@ -30,6 +33,8 @@ C:\Users\Aster\Desktop\Proyecto-db-scripts\
 ## Uso Rápido
 
 ```cmd
+REM Ejecutar desde db-scripts\windows (o con la ruta completa al .bat)
+
 # Reconstruir todo desde cero
 .\rebuild-all.bat
 
@@ -50,8 +55,8 @@ docker-compose logs -f
 ## Personalizar el Seed
 
 El seed se define en:
-- **Script principal**: `C:\Users\Aster\Desktop\Proyecto-db\db\seed\seed.py`
-- **Catálogos CSV**: `C:\Users\Aster\Desktop\Proyecto-db\db\seed\catalogo\`
+- **Script principal**: `db/seed/seed.py`
+- **Catálogos CSV**: `db/seed/catalogo/`
 
 ### Parámetros principales en `seed.py`:
 ```python

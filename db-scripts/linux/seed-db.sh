@@ -4,8 +4,12 @@
 # ============================================================
 # Edit SEED_OPTIONS below to customize what data to load
 # ============================================================
+set -e
 
-cd "$(dirname "$0")/../Proyecto-db"
+cd "$(dirname "$0")/../.." || {
+    echo "ERROR: Could not find the project root from $(dirname "$0")/../.."
+    exit 1
+}
 
 echo "============================================="
 echo "Database Seed Options"
@@ -13,8 +17,8 @@ echo "============================================="
 echo "Current seed script: db/seed/seed.py"
 echo ""
 echo "To customize seed data, edit:"
-echo "  - C:\Users\Aster\Desktop\Proyecto-db\db\seed\seed.py"
-echo "  - CSV files in C:\Users\Aster\Desktop\Proyecto-db\db\seed\catalogo\"
+echo "  - $(pwd)/db/seed/seed.py"
+echo "  - CSV files in $(pwd)/db/seed/catalogo/"
 echo ""
 echo "Seed options (modify in seed.py):"
 echo "  - SEED = 42           (random seed for reproducibility)"

@@ -3,7 +3,8 @@
     Empty the database (drop all tables, keep volumes)
 
 .DESCRIPTION
-    Empties the database by running the SQL script. Supports --yes flag to skip confirmation.
+    Empties the database by running the SQL script. Supports -Yes flag to skip confirmation.
+    All tables are truncated EXCEPT USUARIO, so existing users are kept.
     This script works from any directory - it finds the project root automatically.
 
 .PARAMETER Yes
@@ -62,4 +63,4 @@ if ($COMPOSE -eq "docker compose") {
     docker-compose exec -T db psql -U postgres -d bodegas_atuel -c $scriptContent
 }
 
-Write-Host "Database emptied!"
+Write-Host "Database emptied! (existing users in USUARIO were preserved)"

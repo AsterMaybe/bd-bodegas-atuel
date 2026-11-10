@@ -1,4 +1,4 @@
--- Empty database: truncate all tables EXCEPT USUARIO (keep users functional)
+-- Empty database: truncate all tables EXCEPT USUARIO (keep existing users)
 -- Run with: docker exec -i bodegas_db psql -U postgres -d bodegas_atuel -f empty_database.sql
 
 DO $$ DECLARE r RECORD; BEGIN
@@ -29,3 +29,7 @@ DO $$ DECLARE r RECORD; BEGIN
         EXECUTE 'ALTER SEQUENCE ' || quote_ident(r.relname) || ' RESTART WITH 1';
     END LOOP;
 END $$;
+
+-- Nota: La tabla USUARIO se conserva intacta. Se borra todo lo demás
+-- (todas las demás tablas y sus secuencias), pero los usuarios que ya
+-- existían en la base de datos se mantienen sin cambios.

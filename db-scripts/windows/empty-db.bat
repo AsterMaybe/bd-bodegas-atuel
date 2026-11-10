@@ -2,6 +2,7 @@
 setlocal
 REM ============================================================
 REM Empty the database (drop all tables, keep volumes)
+REM - All tables are truncated EXCEPT USUARIO (existing users are kept)
 REM Usage: empty-db.bat [--yes]  (skip confirmation with --yes)
 REM ============================================================
 
@@ -35,5 +36,5 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo Database emptied!
+echo Database emptied! (existing users in USUARIO were preserved)
 endlocal

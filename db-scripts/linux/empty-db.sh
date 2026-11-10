@@ -1,6 +1,7 @@
 #!/bin/bash
 # ============================================================
 # Empty the database (drop all tables, keep volumes)
+# - All tables are truncated EXCEPT USUARIO (existing users are kept)
 # Usage: ./empty-db.sh [--yes]  (skip confirmation with --yes)
 # ============================================================
 set -e
@@ -38,4 +39,4 @@ fi
 # Use docker compose exec to run inside the db service container
 $COMPOSE exec -T db psql -U postgres -d bodegas_atuel < db/empty_database.sql
 
-echo "Database emptied!"
+echo "Database emptied! (existing users in USUARIO were preserved)"

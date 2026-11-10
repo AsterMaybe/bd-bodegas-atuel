@@ -1,6 +1,7 @@
+# Dockerfile for PostgreSQL with Python seeding capabilities
 FROM postgres:14
 
-# Instalar uv y herramientas para ejecutar la carga masiva (seed.py) dentro del contenedor
+# Instalar Python y herramientas para ejecutar la carga masiva (seed.py) dentro del contenedor
 RUN apt-get update \
  && apt-get install -y --no-install-recommends python3 python3-pip curl ca-certificates \
  && rm -rf /var/lib/apt/lists/*

@@ -4,7 +4,7 @@ FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
 
 WORKDIR /app
 
-# Copiar requirements
+# Copiar solo los archivos necesarios para instalar dependencias
 COPY requirements.txt .
 
 # Instalar dependencias con uv (mucho más rápido que pip)
@@ -24,8 +24,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Copiar código fuente
-COPY . .
+# Copiar código fuente (respeta .dockerignore)
+COPY src/ ./src/
 
 # Usuario no-root para seguridad
 RUN useradd -m -u 1001 appuser && chown -R appuser:appuser /app
@@ -34,7 +34,7 @@ USER appuser
 # Exponer puerto
 EXPOSE 8000
 
-# Healthcheck
+# Healthcheck - usa el endpoint /health que no requiere /api prefix
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
 

@@ -11,6 +11,13 @@ cd "$(dirname "$0")/../.." || {
     exit 1
 }
 
+# Use "docker compose" (v2+) when available, fall back to docker-compose.
+if docker compose version >/dev/null 2>&1; then
+    COMPOSE="docker compose"
+else
+    COMPOSE="docker-compose"
+fi
+
 echo "============================================="
 echo "Database Seed Options"
 echo "============================================="
@@ -39,8 +46,9 @@ echo "  - Employee:   empleado@bodegasatuel.com / empleado123"
 echo "============================================="
 
 echo "Running seed..."
-docker exec bodegas_db python3 /opt/seed/seed.py
+# Use docker compose exec to run inside the db service container
+$COMPOSE exec -T db python3 /opt/seed/seed.py
 
 echo ""
 echo "Seed completed!"
-echo "Verify with: docker exec bodegas_db psql -U postgres -d bodegas_atuel -c \"SELECT COUNT(*) FROM USUARIO;\""
+echo "Verify with: $COMPOSE exec db psql -U postgres -d bodegas_atuel -c \"SELECT COUNT(*) FROM USUARIO;\""

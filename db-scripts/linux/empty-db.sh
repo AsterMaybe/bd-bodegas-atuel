@@ -15,6 +15,13 @@ if [ ! -f db/empty_database.sql ]; then
     exit 1
 fi
 
+# Use "docker compose" (v2+) when available, fall back to docker-compose.
+if docker compose version >/dev/null 2>&1; then
+    COMPOSE="docker compose"
+else
+    COMPOSE="docker-compose"
+fi
+
 # Check for --yes flag to skip confirmation
 if [ "$1" = "--yes" ]; then
     echo "Emptying database..."
@@ -28,6 +35,7 @@ else
     echo "Emptying database..."
 fi
 
-docker exec -i bodegas_db psql -U postgres -d bodegas_atuel < db/empty_database.sql
+# Use docker compose exec to run inside the db service container
+$COMPOSE exec -T db psql -U postgres -d bodegas_atuel < db/empty_database.sql
 
 echo "Database emptied!"

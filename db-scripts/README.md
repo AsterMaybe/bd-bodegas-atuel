@@ -1,110 +1,82 @@
-# Proyecto DB - Docker Scripts
+# Database Scripts
 
-Scripts para gestionar el entorno Docker de Bodegas del Atuel.
+Scripts for managing the Docker-based database and services.
 
-## Ubicación
-Estos scripts viven dentro del repositorio, en `db-scripts/`, y funcionan
-desde cualquier directorio: cada script detecta la raíz del proyecto
-(`bd-bodegas-atuel/`) a partir de su propia ubicación.
+## Directory Structure
 
-Si falta el archivo `.env`, `up-all` y `rebuild-all` lo crean automáticamente
-copiando `.env.example`.
-
-## Scripts Disponibles
-
-### Windows (.bat)
-| Script | Descripción |
-|--------|-------------|
-| `rebuild-all.bat` | Reconstruye todas las imágenes Docker sin caché |
-| `up-all.bat` | Inicia todos los servicios (db, api, front) |
-| `down-all.bat` | Detiene todos los servicios (mantiene volúmenes) |
-| `empty-db.bat` | Vacía la base de datos (trunca todas las tablas). Usa `--yes` para saltar confirmación |
-| `seed-db.bat` | Ejecuta el seed de datos (carga masiva) |
-
-### Linux/WSL (.sh)
-| Script | Descripción |
-|--------|-------------|
-| `rebuild-all.sh` | Reconstruye todas las imágenes Docker sin caché |
-| `up-all.sh` | Inicia todos los servicios |
-| `down-all.sh` | Detiene todos los servicios |
-| `empty-db.sh` | Vacía la base de datos. Usa `--yes` para saltar confirmación |
-| `seed-db.sh` | Ejecuta el seed de datos |
-
-## Uso Rápido
-
-```cmd
-REM Ejecutar desde db-scripts\windows (o con la ruta completa al .bat)
-
-# Reconstruir todo desde cero
-.\rebuild-all.bat
-
-# Levantar servicios
-.\up-all.bat
-
-# Ver logs
-docker-compose logs -f
-
-# Bajar servicios
-.\down-all.bat
-
-# Vaciar BD y recargar seed (automático sin confirmación)
-.\empty-db.bat --yes
-.\seed-db.bat
+```
+db-scripts/
+├── linux/          # Bash scripts for Linux/macOS
+│   ├── up-all.sh       # Start all services
+│   ├── down-all.sh     # Stop all services (keep volumes)
+│   ├── rebuild-all.sh  # Rebuild all images (no cache)
+│   ├── seed-db.sh      # Run database seed
+│   └── empty-db.sh     # Empty database (drop all tables)
+└── windows/        # PowerShell scripts for Windows
+    ├── up-all.ps1
+    ├── down-all.ps1
+    ├── rebuild-all.ps1
+    ├── seed-db.ps1
+    └── empty-db.ps1
 ```
 
-## Personalizar el Seed
+## Usage
 
-El seed se define en:
-- **Script principal**: `db/seed/seed.py`
-- **Catálogos CSV**: `db/seed/catalogo/`
+### Linux/macOS
 
-### Parámetros principales en `seed.py`:
-```python
-SEED = 42                    # Semilla aleatoria
-N_EMP = 60                   # Empleados
-N_SALA = 30                  # Salas de venta
-N_BODEGA = 20                # Bodegas
-N_TRANSP = 15                # Transportistas
-N_FINCA = 40                 # Fincas
-N_PARCELA_TARGET = 600       # Parcelas
-N_VINO = 400                 # Vinos
-N_CLIENTE = 20000            # Clientes
-N_INGRESO = 2500             # Ingresos
-N_TRANSF = 2500              # Transferencias
-N_COMP = 150000              # Comprobantes
-CAMPAIGNS = [2022,2023,2024,2025,2026]
+```bash
+# Make scripts executable (first time only)
+chmod +x db-scripts/linux/*.sh
+
+# Start all services
+./db-scripts/linux/up-all.sh
+
+# Stop all services
+./db-scripts/linux/down-all.sh
+
+# Rebuild all images (no cache)
+./db-scripts/linux/rebuild-all.sh
+
+# Seed database with sample data
+./db-scripts/linux/seed-db.sh
+
+# Empty database (with confirmation)
+./db-scripts/linux/empty-db.sh
+
+# Empty database (skip confirmation)
+./db-scripts/linux/empty-db.sh --yes
 ```
 
-### Usuarios creados por defecto:
-| Email | Password | Rol |
-|-------|----------|-----|
-| admin@bodegasatuel.com | admin123 | administrador |
-| empleado@bodegasatuel.com | empleado123 | empleado |
+### Windows (PowerShell)
 
-## Flujo Completo de Reinicio Limpio
+```powershell
+# Start all services
+.\db-scripts\windows\up-all.ps1
 
-```cmd
-# 1. Bajar todo y borrar volúmenes
-docker-compose down -v
+# Stop all services
+.\db-scripts\windows\down-all.ps1
 
-# 2. Reconstruir imágenes
-.\rebuild-all.bat
+# Rebuild all images (no cache)
+.\db-scripts\windows\rebuild-all.ps1
 
-# 3. Levantar (crea BD fresca + migraciones)
-.\up-all.bat
+# Seed database with sample data
+.\db-scripts\windows\seed-db.ps1
 
-# 4. Cargar datos seed
-.\seed-db.bat
+# Empty database (with confirmation)
+.\db-scripts\windows\empty-db.ps1
 
-# O solo vaciar y recargar datos (mantiene contenedores)
-.\empty-db.bat --yes
-.\seed-db.bat
+# Empty database (skip confirmation)
+.\db-scripts\windows\empty-db.ps1 -Yes
 ```
 
-## URLs de Acceso
-- **Frontend**: http://localhost:3000
-- **API Docs**: http://localhost:8000/docs
-- **API Health**: http://localhost:8000/health
+## Requirements
 
-## Comando para acceder a db en docker
-docker exec -it bodegas_db psql -U postgres -d bodegas_atuel
+- Docker and Docker Compose (v2+ recommended)
+- `.env` file in project root (created automatically from `.env.example` if missing)
+
+## Notes
+
+- All scripts automatically find the project root, so they can be run from any directory
+- Scripts use `docker compose` (v2+) when available, falling back to `docker-compose` (v1)
+- The `seed-db` and `empty-db` scripts use `docker compose exec` to run commands inside the database service container, avoiding hardcoded container names
+- Volumes are preserved when stopping services (`down-all`) to keep database data

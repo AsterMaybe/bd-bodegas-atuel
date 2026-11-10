@@ -7,9 +7,37 @@ import random
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 import psycopg
+import bcrypt
 
-SEED = 42
+# Load .env.seed configuration
+from dotenv import load_dotenv
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+load_dotenv(os.path.join(BASE_DIR, ".env.seed"))
+
+def get_int(key, default):
+    return int(os.getenv(key, default))
+
+def get_float(key, default):
+    return float(os.getenv(key, default))
+
+def get_list_int(key, default):
+    val = os.getenv(key)
+    if not val:
+        return default
+    return [int(x.strip()) for x in val.split(",")]
+
+def get_list_str(key, default):
+    val = os.getenv(key)
+    if not val:
+        return default
+    return [x.strip() for x in val.split(",")]
+
+# ============================================================
+# Seed Configuration (from .env.seed)
+# ============================================================
+SEED = get_int("SEED", 42)
 random.seed(SEED)
+
 try:
     from faker import Faker
     Faker.seed(SEED)
@@ -17,7 +45,6 @@ try:
 except Exception:
     fake = None
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CATALOG_DIR = os.path.join(BASE_DIR, "catalogo")
 
 DB = dict(
@@ -29,6 +56,94 @@ DB = dict(
 )
 
 TWOPLACES = Decimal("0.01")
+
+# ---- Volume Configuration ----
+N_EMP = get_int("N_EMP", 60)
+N_SALA = get_int("N_SALA", 30)
+N_BODEGA = get_int("N_BODEGA", 20)
+N_TRANSP = get_int("N_TRANSP", 15)
+N_FINCA = get_int("N_FINCA", 40)
+N_PARCELA_TARGET = get_int("N_PARCELA_TARGET", 600)
+N_VINO = get_int("N_VINO", 400)
+N_CLIENTE = get_int("N_CLIENTE", 20000)
+N_INGRESO = get_int("N_INGRESO", 2500)
+N_TRANSF = get_int("N_TRANSF", 2500)
+N_COMP = get_int("N_COMP", 150000)
+
+CAMPAIGNS = get_list_int("CAMPAIGNS", [2022, 2023, 2024, 2025, 2026])
+
+# ---- Client Type Distribution ----
+CLIENTE_SOCIO = get_int("CLIENTE_SOCIO", 12000)
+CLIENTE_DISTRIBUIDOR = get_int("CLIENTE_DISTRIBUIDOR", 5000)
+CLIENTE_EXPORTADOR = get_int("CLIENTE_EXPORTADOR", 3000)
+
+# ---- Employee Configuration ----
+EMP_SALARIO = Decimal(str(get_float("EMP_SALARIO", 650000.00)))
+ENCARGADO_SALARIO = Decimal(str(get_float("ENCARGADO_SALARIO", 950000.00)))
+EMP_FECHA_INGRESO = date.fromisoformat(os.getenv("EMP_FECHA_INGRESO", "2019-05-01"))
+ENCARGADO_FECHA_INGRESO = date.fromisoformat(os.getenv("ENCARGADO_FECHA_INGRESO", "2017-03-01"))
+
+# ---- Farm Configuration ----
+FINCA_SUPERFICIE_MIN = get_float("FINCA_SUPERFICIE_MIN", 5)
+FINCA_SUPERFICIE_MAX = get_float("FINCA_SUPERFICIE_MAX", 200)
+
+# ---- Parcel Configuration ----
+PARCELA_SUPERFICIE_MIN = get_float("PARCELA_SUPERFICIE_MIN", 0.5)
+PARCELA_SUPERFICIE_MAX = get_float("PARCELA_SUPERFICIE_MAX", 10)
+PARCELA_ANO_MIN = get_int("PARCELA_ANO_MIN", 1990)
+PARCELA_ANO_MAX = get_int("PARCELA_ANO_MAX", 2020)
+
+# ---- Wine Configuration ----
+VINO_ANO_MIN = get_int("VINO_ANO_MIN", 2019)
+VINO_ANO_MAX = get_int("VINO_ANO_MAX", 2025)
+VINO_GRAD_MIN = get_float("VINO_GRAD_MIN", 10)
+VINO_GRAD_MAX = get_float("VINO_GRAD_MAX", 14.5)
+VINO_PRECIO_MIN = get_float("VINO_PRECIO_MIN", 1000)
+VINO_PRECIO_MAX = get_float("VINO_PRECIO_MAX", 8000)
+VINO_VOL_OPTIONS = get_list_int("VINO_VOL_OPTIONS", [187, 375, 750, 1500, 3000])
+
+# ---- Harvest Lot Configuration ----
+LOTE_KG_MIN = get_float("LOTE_KG_MIN", 500)
+LOTE_KG_MAX = get_float("LOTE_KG_MAX", 8000)
+LOTE_CAMPAIGNS_PER_PARCELA_MIN = get_int("LOTE_CAMPAIGNS_PER_PARCELA_MIN", 2)
+LOTE_CAMPAIGNS_PER_PARCELA_MAX = get_int("LOTE_CAMPAIGNS_PER_PARCELA_MAX", 4)
+
+# ---- Quality Analysis Ranges ----
+ANALISIS_BRIX_MIN = get_float("ANALISIS_BRIX_MIN", 20)
+ANALISIS_BRIX_MAX = get_float("ANALISIS_BRIX_MAX", 26)
+ANALISIS_PH_MIN = get_float("ANALISIS_PH_MIN", 3.0)
+ANALISIS_PH_MAX = get_float("ANALISIS_PH_MAX", 4.0)
+ANALISIS_ACIDEZ_MIN = get_float("ANALISIS_ACIDEZ_MIN", 4.0)
+ANALISIS_ACIDEZ_MAX = get_float("ANALISIS_ACIDEZ_MAX", 9.0)
+
+# ---- Income Document Configuration ----
+INGRESO_FECHA_MIN = get_int("INGRESO_FECHA_MIN", 2024)
+INGRESO_FECHA_MAX = get_int("INGRESO_FECHA_MAX", 2026)
+INGRESO_VINOS_PER_DOC_MIN = get_int("INGRESO_VINOS_PER_DOC_MIN", 1)
+INGRESO_VINOS_PER_DOC_MAX = get_int("INGRESO_VINOS_PER_DOC_MAX", 5)
+INGRESO_QTY_MIN = get_int("INGRESO_QTY_MIN", 50)
+INGRESO_QTY_MAX = get_int("INGRESO_QTY_MAX", 500)
+
+# ---- Transfer Document Configuration ----
+TRANSF_FECHA_MIN = get_int("TRANSF_FECHA_MIN", 2024)
+TRANSF_FECHA_MAX = get_int("TRANSF_FECHA_MAX", 2026)
+TRANSF_VINOS_PER_DOC_MIN = get_int("TRANSF_VINOS_PER_DOC_MIN", 2)
+TRANSF_VINOS_PER_DOC_MAX = get_int("TRANSF_VINOS_PER_DOC_MAX", 6)
+TRANSF_QTY_MIN = get_int("TRANSF_QTY_MIN", 20)
+TRANSF_QTY_MAX = get_int("TRANSF_QTY_MAX", 300)
+
+# ---- Sales Receipt Configuration ----
+COMPROBANTE_FECHA_MIN = get_int("COMPROBANTE_FECHA_MIN", 2025)
+COMPROBANTE_FECHA_MAX = get_int("COMPROBANTE_FECHA_MAX", 2026)
+COMPROBANTE_VINOS_PER_DOC_MIN = get_int("COMPROBANTE_VINOS_PER_DOC_MIN", 2)
+COMPROBANTE_VINOS_PER_DOC_MAX = get_int("COMPROBANTE_VINOS_PER_DOC_MAX", 6)
+
+# ---- Export Permit Configuration ----
+PERMISO_PAISES = get_list_str("PERMISO_PAISES", ["Brasil", "Chile", "Uruguay", "Paraguay", "EEUU"])
+PERMISO_PER_CLIENT_MIN = get_int("PERMISO_PER_CLIENT_MIN", 1)
+PERMISO_PER_CLIENT_MAX = get_int("PERMISO_PER_CLIENT_MAX", 2)
+PERMISO_DURATION_MIN = get_int("PERMISO_DURATION_MIN", 180)
+PERMISO_DURATION_MAX = get_int("PERMISO_DURATION_MAX", 1095)
 
 def money(x):
     return Decimal(x).quantize(TWOPLACES)
@@ -167,18 +282,17 @@ def main():
         cuit_counter += 1
         encargado_cuits[r["nombre"]] = cuit
         nombre_encargado = (fake.name() if fake else f"Encargado {r['nombre']}")
-        personal_rows.append((cuit, nombre_encargado, date(2017, 3, 1), Decimal("950000.00")))
+        personal_rows.append((cuit, nombre_encargado, ENCARGADO_FECHA_INGRESO, ENCARGADO_SALARIO))
         encargado_rows.append((cuit,))
         localidad_rows.append((r["codigo_postal"], r["provincia"], r["nombre"], cuit))
 
     # empleados personal base
-    N_EMP = 60
     empleado_cuits = []
     for i in range(N_EMP):
         cuit = gen_cuit(cuit_counter)
         cuit_counter += 1
         empleado_cuits.append(cuit)
-        personal_rows.append((cuit, fake.name() if fake else f"Empleado {i+1}", date(2019, 5, 1), Decimal("650000.00")))
+        personal_rows.append((cuit, fake.name() if fake else f"Empleado {i+1}", EMP_FECHA_INGRESO, EMP_SALARIO))
 
     def load_personal():
         with conn.cursor() as cur:
@@ -204,7 +318,6 @@ def main():
     localidad_codes = [r["codigo_postal"] for r in locs_csv]
 
     # salas
-    N_SALA = 30
     sala_rows = []
     for i in range(1, N_SALA + 1):
         cp = random.choice(localidad_codes)
@@ -259,7 +372,6 @@ def main():
     maridaje_ids = [r[0] for r in maridaje_rows]
 
     # bodegas (persona jurídica: CUIT inicia en 30)
-    N_BODEGA = 20
     bodega_cuits = []
     bodega_rows = []
     for i in range(N_BODEGA):
@@ -274,7 +386,6 @@ def main():
     timed("bodega", load_bodega)
 
     # transportistas (persona física: CUIT inicia en 20)
-    N_TRANSP = 15
     transp_rows = []
     transp_cuits = []
     for i in range(N_TRANSP):
@@ -302,10 +413,9 @@ def main():
     timed("transportista_localidad", load_tl)
 
     # fincas
-    N_FINCA = 40
     finca_rows = []
     for i in range(1, N_FINCA + 1):
-        finca_rows.append((i, (fake.company() if fake else f"Finca {i}") + " SRL", Decimal(str(round(random.uniform(5, 200), 2))), random.randint(1, len(deptos_csv))))
+        finca_rows.append((i, (fake.company() if fake else f"Finca {i}") + " SRL", Decimal(str(round(random.uniform(FINCA_SUPERFICIE_MIN, FINCA_SUPERFICIE_MAX), 2))), random.randint(1, len(deptos_csv))))
     def load_finca():
         with conn.cursor() as cur:
             copy_rows(cur, "finca", ["id_finca", "nombre", "superficie_ha", "id_depto"], finca_rows)
@@ -316,13 +426,12 @@ def main():
     # parcelas
     parcela_rows = []
     parcela_keys = []
-    N_PARCELA_TARGET = 600
     # distribute
     per_finca = N_PARCELA_TARGET // N_FINCA
     for f in range(1, N_FINCA + 1):
         for n in range(1, per_finca + 1):
             pid = random.choice(cepa_ids)
-            parcela_rows.append((n, f, Decimal(str(round(random.uniform(0.5, 10), 2))), random.randint(1990, 2020), pid))
+            parcela_rows.append((n, f, Decimal(str(round(random.uniform(PARCELA_SUPERFICIE_MIN, PARCELA_SUPERFICIE_MAX), 2))), random.randint(PARCELA_ANO_MIN, PARCELA_ANO_MAX), pid))
             parcela_keys.append((n, f))
     def load_parcela():
         with conn.cursor() as cur:
@@ -332,13 +441,12 @@ def main():
     timed("parcela", load_parcela)
 
     # vinos
-    N_VINO = 400
-    vol_options = [187, 375, 750, 1500, 3000]
+    vol_options = VINO_VOL_OPTIONS
     vino_rows = []
     for i in range(1, N_VINO + 1):
         vino_rows.append((i, f"Etiqueta {i}", random.choice(["tinto", "blanco", "rosado", "espumante"]),
-                         random.randint(2019, 2025), random.choice(vol_options),
-                         Decimal(str(round(random.uniform(10, 14.5), 2))), money(random.uniform(1000, 8000)),
+                         random.randint(VINO_ANO_MIN, VINO_ANO_MAX), random.choice(vol_options),
+                         Decimal(str(round(random.uniform(VINO_GRAD_MIN, VINO_GRAD_MAX), 2))), money(random.uniform(VINO_PRECIO_MIN, VINO_PRECIO_MAX)),
                          random.choice(bodega_cuits)))
     def load_vino():
         with conn.cursor() as cur:
@@ -389,12 +497,11 @@ def main():
     timed("vino_maridaje", load_vm)
 
     # clientes
-    N_CLIENTE = 20000
     client_rows = []
     subtype_socio = []
     subtype_dist = []
     subtype_export = []
-    tipos = (["socio"] * 12000) + (["distribuidor"] * 5000) + (["exportador"] * 3000)
+    tipos = (["socio"] * CLIENTE_SOCIO) + (["distribuidor"] * CLIENTE_DISTRIBUIDOR) + (["exportador"] * CLIENTE_EXPORTADOR)
     random.shuffle(tipos)
     for i in range(1, N_CLIENTE + 1):
         t = tipos[i - 1]
@@ -429,7 +536,7 @@ def main():
         elif t == "distribuidor":
             subtype_dist.append((cid, random.choice(localidad_codes), f"HAB-{cid}"))
         else:
-            subtype_export.append((cid, random.choice(["Brasil", "Chile", "Uruguay", "Paraguay", "EEUU"])))
+            subtype_export.append((cid, random.choice(PERMISO_PAISES)))
 
     def load_socio():
         with conn.cursor() as cur:
@@ -455,9 +562,9 @@ def main():
     # permisos exportador
     perm_rows = []
     for cid, pais in [(r[0], r[1]) for r in subtype_export]:
-        for _ in range(random.randint(1, 2)):
+        for _ in range(random.randint(PERMISO_PER_CLIENT_MIN, PERMISO_PER_CLIENT_MAX)):
             emision = date(random.randint(2023, 2026), random.randint(1, 12), random.randint(1, 28))
-            venc = emision + timedelta(days=random.randint(180, 1095))
+            venc = emision + timedelta(days=random.randint(PERMISO_DURATION_MIN, PERMISO_DURATION_MAX))
             perm_rows.append((f"PERM-{cid}-{len(perm_rows)}", emision, venc, cid))
     def load_permiso():
         with conn.cursor() as cur:
@@ -467,21 +574,20 @@ def main():
     timed("permiso_exportador", load_permiso)
 
     # lotes uva + analisis
-    CAMPAIGNS = [2022, 2023, 2024, 2025, 2026]
     lote_rows = []
     analisis_rows = []
     lote_counter = 1
     # at most one per (parcela, campania)
     for (nro, finca) in parcela_keys:
         # choose 2-4 campaigns
-        for camp in random.sample(CAMPAIGNS, random.randint(2, 4)):
+        for camp in random.sample(CAMPAIGNS, random.randint(LOTE_CAMPAIGNS_PER_PARCELA_MIN, LOTE_CAMPAIGNS_PER_PARCELA_MAX)):
             harvest = date(camp, random.randint(2, 4), random.randint(1, 28))
-            kg = Decimal(str(round(random.uniform(500, 8000), 2)))
+            kg = Decimal(str(round(random.uniform(LOTE_KG_MIN, LOTE_KG_MAX), 2)))
             lote_rows.append((lote_counter, camp, harvest, kg, nro, finca, random.choice(bodega_cuits)))
             analisis_rows.append((lote_counter, harvest + timedelta(days=random.randint(1, 10)),
-                                 Decimal(str(round(random.uniform(20, 26), 2))),
-                                 Decimal(str(round(random.uniform(3.0, 4.0), 2))),
-                                 Decimal(str(round(random.uniform(4.0, 9.0), 2))),
+                                 Decimal(str(round(random.uniform(ANALISIS_BRIX_MIN, ANALISIS_BRIX_MAX), 2))),
+                                 Decimal(str(round(random.uniform(ANALISIS_PH_MIN, ANALISIS_PH_MAX), 2))),
+                                 Decimal(str(round(random.uniform(ANALISIS_ACIDEZ_MIN, ANALISIS_ACIDEZ_MAX), 2))),
                                  lote_counter))
             lote_counter += 1
 
@@ -501,17 +607,16 @@ def main():
     timed("analisis_calidad", load_analisis)
 
     # ingresos + renglones
-    N_INGRESO = 2500
     ingreso_rows = []
     renglon_ingreso_rows = []
     deposito_stock = {vid: 0 for vid in vino_ids}
     for i in range(1, N_INGRESO + 1):
-        fecha = date(random.randint(2024, 2026), random.randint(1, 12), random.randint(1, 28))
+        fecha = date(random.randint(INGRESO_FECHA_MIN, INGRESO_FECHA_MAX), random.randint(1, 12), random.randint(1, 28))
         ingreso_rows.append((i, fecha, "procesado", random.choice(bodega_cuits), random.randint(1, N_TRANSP)))
         # renglones
-        chosen_vinos = random.sample(vino_ids, random.randint(1, 5))
+        chosen_vinos = random.sample(vino_ids, random.randint(INGRESO_VINOS_PER_DOC_MIN, INGRESO_VINOS_PER_DOC_MAX))
         for vid in chosen_vinos:
-            qty = random.randint(50, 500)
+            qty = random.randint(INGRESO_QTY_MIN, INGRESO_QTY_MAX)
             renglon_ingreso_rows.append((i, vid, qty))
             deposito_stock[vid] += qty
 
@@ -530,7 +635,6 @@ def main():
     timed("renglon_ingreso", load_renglon_ingreso)
 
     # transferencias + renglones
-    N_TRANSF = 2500
     transferencia_rows = []
     renglon_transferencia_rows = []
     sala_stock = {}  # (sala, vino) -> qty
@@ -539,18 +643,18 @@ def main():
     while transf_counter <= N_TRANSF and attempts < N_TRANSF * 5:
         attempts += 1
         sala = random.randint(1, N_SALA)
-        fecha = date(random.randint(2024, 2026), random.randint(1, 12), random.randint(1, 28))
+        fecha = date(random.randint(TRANSF_FECHA_MIN, TRANSF_FECHA_MAX), random.randint(1, 12), random.randint(1, 28))
         # pick vinos with stock
         candidates = [vid for vid in vino_ids if deposito_stock[vid] > 0]
         if not candidates:
             break
-        chosen = random.sample(candidates, min(random.randint(2, 6), len(candidates)))
+        chosen = random.sample(candidates, min(random.randint(TRANSF_VINOS_PER_DOC_MIN, TRANSF_VINOS_PER_DOC_MAX), len(candidates)))
         rengs = []
         ok = True
         for vid in chosen:
             maxq = deposito_stock[vid]
-            lo = min(20, maxq)
-            hi = min(maxq, 300)
+            lo = min(TRANSF_QTY_MIN, maxq)
+            hi = min(maxq, TRANSF_QTY_MAX)
             qty = random.randint(lo, hi) if lo <= hi else maxq
             if qty <= 0:
                 continue
@@ -581,7 +685,6 @@ def main():
     timed("renglon_transferencia", load_renglon_transferencia)
 
     # comprobantes + renglones
-    N_COMP = 150000
     comp_rows = []
     renglon_comp_rows = []
     comp_counter = 1
@@ -593,13 +696,13 @@ def main():
         if not salas_con_stock:
             break
         sala = random.choice(salas_con_stock)
-        fecha = datetime(random.randint(2025, 2026), random.randint(1, 12), random.randint(1, 28),
+        fecha = datetime(random.randint(COMPROBANTE_FECHA_MIN, COMPROBANTE_FECHA_MAX), random.randint(1, 12), random.randint(1, 28),
                          random.randint(0, 23), random.randint(0, 59), random.randint(0, 59))
         disc_pct = client_discount_map[cid]
         candidates = [vid for vid in vino_ids if sala_stock.get((sala, vid), 0) > 0]
         if not candidates:
             continue
-        chosen = random.sample(candidates, min(random.randint(2, 6), len(candidates)))
+        chosen = random.sample(candidates, min(random.randint(COMPROBANTE_VINOS_PER_DOC_MIN, COMPROBANTE_VINOS_PER_DOC_MAX), len(candidates)))
         rengs = []
         subtotal_header = Decimal("0.00")
         desc_header = Decimal("0.00")
@@ -698,6 +801,30 @@ def main():
             if seq:
                 cur.execute(f"SELECT setval('{seq}', {mx}, false)")
     conn.commit()
+
+    # ---- USUARIOS DEL SISTEMA (bcrypt) ----
+    print("\nCreando usuarios del sistema...")
+    def create_usuarios():
+        with conn.cursor() as cur:
+            # Admin password: "admin123"
+            admin_hash = bcrypt.hashpw(b"admin123", bcrypt.gensalt()).decode()
+            cur.execute(
+                """INSERT INTO USUARIO (nombre, email, password_hash, rol, activo)
+                   VALUES (%s, %s, %s, %s, %s)
+                   ON CONFLICT (email) DO UPDATE SET password_hash=EXCLUDED.password_hash, rol=EXCLUDED.rol, activo=EXCLUDED.activo""",
+                ("Administrador del Sistema", "admin@bodegasatuel.com", admin_hash, "administrador", True)
+            )
+            # Empleado password: "empleado123"
+            emp_hash = bcrypt.hashpw(b"empleado123", bcrypt.gensalt()).decode()
+            cur.execute(
+                """INSERT INTO USUARIO (nombre, email, password_hash, rol, activo)
+                   VALUES (%s, %s, %s, %s, %s)
+                   ON CONFLICT (email) DO UPDATE SET password_hash=EXCLUDED.password_hash, rol=EXCLUDED.rol, activo=EXCLUDED.activo""",
+                ("Empleado de Bodega", "empleado@bodegasatuel.com", emp_hash, "empleado", True)
+            )
+        conn.commit()
+        return 2
+    timed("usuario", create_usuarios)
 
     # Ejecutar validaciones automáticamente
     print("\n=== VALIDACIONES ===")

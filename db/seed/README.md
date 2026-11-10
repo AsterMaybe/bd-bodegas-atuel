@@ -2,11 +2,11 @@
 
 ## Requisitos
 - PostgreSQL 14 (contenedor `bodegas_db`).
-- Python 3.11+ con `psycopg[binary]` y `faker`.
+- Python 3.11+ con `psycopg[binary]`, `faker`, `python-dotenv` y `bcrypt`.
 
 ## Ejecutar seed
 ```bash
-pip install "psycopg[binary]" faker
+pip install "psycopg[binary]" faker python-dotenv bcrypt
 python db/seed/seed.py
 ```
 O dentro del contenedor:

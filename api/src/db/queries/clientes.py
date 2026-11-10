@@ -8,16 +8,58 @@ from src.db.pool import get_pool, with_transaction
 async def list_clientes(
     page: int = 1,
     limit: int = 20,
+    tipo: str | None = None,
+    search: str | None = None,
 ) -> dict[str, Any]:
-    """Lista clientes con paginación."""
+    """Lista clientes con paginación y filtros opcionales."""
+    # Validación defensiva (KISS/YAGNI)
+    page = max(1, page)
+    limit = min(max(1, limit), 100)  # Cap máximo 100
+
     pool = await get_pool()
     async with pool.connection() as conn:
-        cur = await conn.execute("SELECT COUNT(*) FROM CLIENTE")
+        # Construcción dinámica de WHERE (SRP: una función, una responsabilidad)
+        where_clauses = []
+        params: list[Any] = []
+
+        if tipo and tipo != "all":
+            where_clauses.append("""
+                CASE
+                    WHEN s.id_cliente IS NOT NULL THEN 'socio'
+                    WHEN d.id_cliente IS NOT NULL THEN 'distribuidor'
+                    WHEN e.id_cliente IS NOT NULL THEN 'exportador'
+                    ELSE 'cliente'
+                END = %s
+            """)
+            params.append(tipo)
+
+        if search:
+            where_clauses.append("""
+                (c.nombre_razon ILIKE %s 
+                 OR c.tipo_doc ILIKE %s 
+                 OR c.nro_doc ILIKE %s)
+            """)
+            like = f"%{search}%"
+            params.extend([like, like, like])
+
+        where_sql = "WHERE " + " AND ".join(where_clauses) if where_clauses else ""
+
+        # Count total (para metadata)
+        count_sql = f"""
+            SELECT COUNT(*)
+            FROM CLIENTE c
+            LEFT JOIN SOCIO_CLUB s ON s.id_cliente = c.id_cliente
+            LEFT JOIN DISTRIBUIDOR d ON d.id_cliente = c.id_cliente
+            LEFT JOIN EXPORTADOR e ON e.id_cliente = c.id_cliente
+            {where_sql}
+        """
+        cur = await conn.execute(count_sql, params)
         row = await cur.fetchone()
         total = row[0] if row else 0
 
+        # Data paginada
         offset = (page - 1) * limit
-        sql = """
+        data_sql = f"""
             SELECT c.id_cliente, c.nombre_razon, c.tipo_doc, c.nro_doc,
                    c.direccion, c.fecha_alta, c.descuento, c.codigo_postal,
                    CASE
@@ -30,10 +72,12 @@ async def list_clientes(
             LEFT JOIN SOCIO_CLUB s ON s.id_cliente = c.id_cliente
             LEFT JOIN DISTRIBUIDOR d ON d.id_cliente = c.id_cliente
             LEFT JOIN EXPORTADOR e ON e.id_cliente = c.id_cliente
+            {where_sql}
             ORDER BY c.id_cliente
             LIMIT %s OFFSET %s
         """
-        cur = await conn.execute(sql, (limit, offset))
+        params.extend([limit, offset])
+        cur = await conn.execute(data_sql, params)
         rows = await cur.fetchall()
 
     columns = [
@@ -41,7 +85,20 @@ async def list_clientes(
         "fecha_alta", "descuento", "codigo_postal", "tipo",
     ]
     data = [dict(zip(columns, r)) for r in rows]
-    return {"data": data, "total": total, "page": page, "limit": limit}
+
+    # Respuesta estandarizada con metadata (para el frontend)
+    total_pages = (total + limit - 1) // limit if total > 0 else 1
+    return {
+        "data": data,
+        "metadata": {
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "total_pages": total_pages,
+            "has_next": page < total_pages,
+            "has_prev": page > 1,
+        },
+    }
 
 
 async def get_cliente_by_id(id_cliente: int) -> dict[str, Any] | None:
@@ -102,7 +159,6 @@ async def get_cliente_by_id(id_cliente: int) -> dict[str, Any] | None:
 async def create_cliente(data: dict[str, Any]) -> dict[str, Any]:
     """Crea cliente + subtipo en una transacción."""
     async def _create(ctx):
-        # Insertar cliente base
         sql_cliente = """
             INSERT INTO CLIENTE (nombre_razon, tipo_doc, nro_doc, direccion,
                                  fecha_alta, descuento, codigo_postal)
@@ -116,12 +172,9 @@ async def create_cliente(data: dict[str, Any]) -> dict[str, Any]:
         row = await cur.fetchone()
         id_cliente = row[0]
 
-        # Insertar subtipo
         tipo = data["tipo"]
         if tipo == "socio":
-            await ctx.execute(
-                "INSERT INTO SOCIO_CLUB (id_cliente) VALUES (%s)", (id_cliente,)
-            )
+            await ctx.execute("INSERT INTO SOCIO_CLUB (id_cliente) VALUES (%s)", (id_cliente,))
         elif tipo == "distribuidor":
             await ctx.execute(
                 "INSERT INTO DISTRIBUIDOR (id_cliente, zona_cobertura, nro_habilitacion) VALUES (%s, %s, %s)",
@@ -133,7 +186,61 @@ async def create_cliente(data: dict[str, Any]) -> dict[str, Any]:
                 (id_cliente, data["pais_destino"]),
             )
 
-        return {"id_cliente": id_cliente, **data}
+        # Obtener cliente completo dentro de la misma transacción
+        sql = """
+            SELECT c.id_cliente, c.nombre_razon, c.tipo_doc, c.nro_doc,
+                   c.direccion, c.fecha_alta, c.descuento, c.codigo_postal,
+                   s.id_cliente AS es_socio,
+                   d.zona_cobertura, d.nro_habilitacion,
+                   e.pais_destino
+            FROM CLIENTE c
+            LEFT JOIN SOCIO_CLUB s ON s.id_cliente = c.id_cliente
+            LEFT JOIN DISTRIBUIDOR d ON d.id_cliente = c.id_cliente
+            LEFT JOIN EXPORTADOR e ON e.id_cliente = c.id_cliente
+            WHERE c.id_cliente = %s
+        """
+        cur = await ctx.execute(sql, (id_cliente,))
+        row = await cur.fetchone()
+        if row is None:
+            raise Exception("Cliente no encontrado tras creación")
+
+        columns = [
+            "id_cliente", "nombre_razon", "tipo_doc", "nro_doc", "direccion",
+            "fecha_alta", "descuento", "codigo_postal", "es_socio",
+            "zona_cobertura", "nro_habilitacion", "pais_destino",
+        ]
+        result = dict(zip(columns, row))
+
+        # Determinar tipo
+        if result["es_socio"] is not None and result["zona_cobertura"] is None and result["pais_destino"] is None:
+            result["tipo"] = "socio"
+        elif result["zona_cobertura"] is not None:
+            result["tipo"] = "distribuidor"
+        elif result["pais_destino"] is not None:
+            result["tipo"] = "exportador"
+        else:
+            result["tipo"] = "cliente"
+
+        # Permisos si es exportador
+        if result["tipo"] == "exportador":
+            sql_perm = """
+                SELECT codigo_permiso, fecha_emision, fecha_venc
+                FROM PERMISO_EXPORTADOR
+                WHERE id_cliente = %s
+            """
+            cur = await ctx.execute(sql_perm, (id_cliente,))
+            perm_rows = await cur.fetchall()
+            result["permisos"] = [
+                {"codigo_permiso": r[0], "fecha_emision": str(r[1]), "fecha_venc": str(r[2])}
+                for r in perm_rows
+            ]
+        else:
+            result["permisos"] = []
+
+        # Limpiar campos internos
+        del result["es_socio"]
+
+        return result
 
     return await with_transaction(_create)
 

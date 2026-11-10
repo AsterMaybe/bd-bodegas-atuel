@@ -1,0 +1,71 @@
+# Dependencies
+node_modules/
+front/node_modules/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+front/dist/
+front/build/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+coverage/
+.nyc_output/
+.pytest_cache/
+*.pytest_cache/
+
+# Database
+*.sqlite
+*.db
+*.dump
+
+# Docker
+docker-compose.override.yml
+
+# Misc
+*.tgz
+.cache/
+
+# OpenCode / agent tools
+.agents/
+skills-lock.json
+
+# Temporary / test files
+test_fn.sql
+test_query.py
+
+# Python deps directory
+api/deps/

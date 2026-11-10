@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from src.db.queries.transferencias import (
     add_renglones_transferencia,
     create_transferencia,
     get_transferencia_by_id,
+    list_transferencias,
     procesar_transferencia,
     terminar_transferencia,
 )
@@ -52,6 +53,17 @@ async def procesar_transferencia_endpoint(nro: int):
     if result is None:
         raise HTTPException(status_code=404, detail="Transferencia no encontrada")
     return result
+
+
+@router.get("", response_model=dict)
+async def get_transferencias(
+    page: int = Query(default=1, ge=1),
+    limit: int = Query(default=20, ge=1, le=100),
+    estado: str | None = Query(default=None, description="Filtrar por estado: en_confeccion, terminado, procesado"),
+    search: str | None = Query(default=None, description="Buscar por Nº transferencia o sala"),
+):
+    """Lista transferencias con paginación, filtro por estado y búsqueda."""
+    return await list_transferencias(page=page, limit=limit, estado=estado, search=search)
 
 
 @router.get("/{nro}", response_model=TransferenciaResponse)
